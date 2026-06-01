@@ -80,9 +80,7 @@ client.on('guildMemberAdd', async (member) => {
             .setDescription(
                 `**👋 Witaj <@${member.id}>!**\n\n` +
                 `Cieszymy się, że dołączyłeś do naszego serwera!\n` +
-                `🔹 **Nick:** ${member.user.username}\n` +
-                `🔹 **ID:** ${member.id}\n` +
-                `🔹 **Dołączyłeś:** <t:${Math.floor(Date.now() / 1000)}:R>\n\n` +
+                `🔹 **Nick:** ${member.user.username}\n\n` +
                 `📜 Zapoznaj się z regulaminem i baw się dobrze! 🎉`
             )
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
