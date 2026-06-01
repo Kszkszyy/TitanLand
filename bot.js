@@ -60,7 +60,7 @@ client.once('ready', () => {
 
 // ========== POWITANIE NOWYCH UŻYTKOWNIKÓW ==========
 client.on('guildMemberAdd', async (member) => {
-    // ID kanału powitalnego - KANAŁ "WITAJ"
+    // ID kanału powitalnego - 1510833999159890161"
     const welcomeChannelID = '1510692131948466296'; // <- TO JEST ID KANAŁU WITAJ
     
     const welcomeChannel = client.channels.cache.get(welcomeChannelID);
