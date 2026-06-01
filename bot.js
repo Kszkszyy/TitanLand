@@ -58,6 +58,46 @@ client.once('ready', () => {
     console.log(`👤 Zalogowano jako: ${client.user.tag}`);
 });
 
+// ========== POWITANIE NOWYCH UŻYTKOWNIKÓW ==========
+client.on('guildMemberAdd', async (member) => {
+    // ID kanału powitalnego - KANAŁ "WITAJ"
+    const welcomeChannelID = '1510692131948466296'; // <- TO JEST ID KANAŁU WITAJ
+    
+    const welcomeChannel = client.channels.cache.get(welcomeChannelID);
+    if (!welcomeChannel) {
+        console.error(`❌ Nie znaleziono kanału powitalnego o ID: ${welcomeChannelID}`);
+        return;
+    }
+
+    try {
+        // Stwórz embed powitalny z awatarem
+        const welcomeEmbed = new EmbedBuilder()
+            .setColor(0x00FF00) // Zielony kolor
+            .setTitle('🌴 Witaj na TitanLAND!')
+            .setDescription(
+                `**👋 Witaj <@${member.id}>!**\n\n` +
+                `Cieszymy się, że dołączyłeś do naszego serwera!\n` +
+                `🔹 **Nick:** ${member.user.username}\n` +
+                `🔹 **ID:** ${member.id}\n` +
+                `🔹 **Dołączyłeś:** <t:${Math.floor(Date.now() / 1000)}:R>\n\n` +
+                `📜 Zapoznaj się z regulaminem i baw się dobrze! 🎉`
+            )
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 })) // Awatar osoby
+            .setFooter({ text: `🌴 TitanLAND | #${member.guild.memberCount} użytkownik` })
+            .setTimestamp();
+
+        // Wyślij wiadomość powitalną z oznaczeniem i awatarem
+        await welcomeChannel.send({ 
+            content: `👋 Witaj <@${member.id}>!`, 
+            embeds: [welcomeEmbed] 
+        });
+
+        console.log(`✅ Powitano nowego użytkownika: ${member.user.tag} (ID: ${member.id})`);
+    } catch (error) {
+        console.error('❌ Błąd podczas wysyłania powitania:', error);
+    }
+});
+
 function parseDuration(timeStr) {
     const match = timeStr.match(/^(\d+)([smhd])$/i);
     if (!match) return null;
