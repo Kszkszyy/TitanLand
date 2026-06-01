@@ -1,0 +1,13 @@
+{
+  "name": "titanland-bot",
+  "version": "1.0.0",
+  "description": "Bot TitanLAND Discord",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "express": "^4.22.2"
+  }
+}
