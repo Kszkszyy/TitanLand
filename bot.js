@@ -33,11 +33,10 @@ const CONFIG = {
     memberRoleID: '1510696852524240996',
     ownerRoleID: '1510698368286986482',
     legitCategoryID: '1510698503914131472',
-    legitPanelChannelID: '1510734576459321496',
+    legitPanelChannelID: $'1510734576459321496',
     legitResultChannelID: '1510698531068051610',
     adminChannelID: '1510794054814662727',
-    konkursChannelID: '1510697605938544752',
-    welcomeChannelID: '1510833999159890161'
+    konkursChannelID: '1510697605938544752'
 };
 
 const TOKEN = process.env.BOT_TOKEN;
@@ -56,48 +55,11 @@ const client = new Client({
 
 client.once('ready', () => {
     console.log(`✅ Bot TitanLAND jest online!`);
-    console.log(`👤 Zalogowano jako: ${client.user.tag}`);
-    const welcomeChannel = client.channels.cache.get(CONFIG.welcomeChannelID);
-    if (welcomeChannel) {
-        console.log(`✅ Kanał powitalny znaleziony: #${welcomeChannel.name}`);
-    } else {
-        console.log(`❌ KANAŁ POWITALNY NIE ZNALEZIONY! ID: ${CONFIG.welcomeChannelID}`);
-    }
-});
-
-// ========== POWITANIE NOWYCH UŻYTKOWNIKÓW ==========
-client.on('guildMemberAdd', async (member) => {
-    console.log(`🔔 Nowy użytkownik dołączył: ${member.user.tag}`);
-    try {
-        const welcomeChannel = client.channels.cache.get(CONFIG.welcomeChannelID);
-        if (!welcomeChannel) {
-            console.error(`❌ Nie znaleziono kanału powitalnego! ID: ${CONFIG.welcomeChannelID}`);
-            return;
-        }
-        const welcomeEmbed = new EmbedBuilder()
-            .setColor(0x00FF00)
-            .setTitle('🌴 Witaj na TitanLAND!')
-            .setDescription(
-                `**👋 Witaj <@${member.id}>!**\n\n` +
-                `Cieszymy się, że dołączyłeś do naszego serwera!\n` +
-                `🔹 **Nick:** ${member.user.username}\n\n` +
-                `📜 Zapoznaj się z regulaminem i baw się dobrze! 🎉`
-            )
-            .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-            .setFooter({ text: `🌴 TitanLAND | #${member.guild.memberCount} użytkownik` })
-            .setTimestamp();
-        await welcomeChannel.send({ 
-            content: `👋 **Witaj <@${member.id}> na TitanLAND!** 🌴`, 
-            embeds: [welcomeEmbed] 
-        });
-        console.log(`✅ Powitano: ${member.user.tag}`);
-    } catch (error) {
-        console.error('❌ Błąd podczas wysyłania powitania:', error);
-    }
+    console.log(`👤 Zalogowano jako: \({client.user.tag}`);
 });
 
 function parseDuration(timeStr) {
-    const match = timeStr.match(/^(\d+)([smhd])$/i);
+    const match = timeStr.match(/^(\d+)([smhd])\)/i);
     if (!match) return null;
     const value = parseInt(match[1]);
     const unit = match[2].toLowerCase();
@@ -109,7 +71,7 @@ function formatDuration(ms) {
     const hours = Math.floor(ms / 3600000);
     const minutes = Math.floor((ms % 3600000) / 60000);
     if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+    return `\({minutes}m`;
 }
 
 client.on('messageCreate', async (message) => {
@@ -124,7 +86,7 @@ client.on('messageCreate', async (message) => {
             await message.delete().catch(() => {});
             const warningEmbed = new EmbedBuilder()
                 .setColor(0xFF4444)
-                .setDescription(`⛔ ${message.author}, **nie możesz wysyłać linków!**\nTylko Administracja ma do tego uprawnienia.`)
+                .setDescription(`⛔ \){message.author}, **nie możesz wysyłać linków!**\nTylko Administracja ma do tego uprawnienia.`)
                 .setFooter({ text: '🌴 TitanLAND | Zakaz reklam' });
             const warningMsg = await message.channel.send({ embeds: [warningEmbed] });
             setTimeout(() => warningMsg.delete().catch(() => {}), 5000);
@@ -144,17 +106,17 @@ client.on('messageCreate', async (message) => {
             .setDescription(
                 '**📦 CENY TITANÓW:**\n\n' +
                 '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                '🔹 **1x Titan**\n' +
-                '   💵 Cena: **1,30 zł**\n\n' +
-                '🔹 **5x Titanów**\n' +
-                '   💵 Cena: **1,15 zł/szt.**\n' +
-                '   💰 Razem: **5,75 zł**\n\n' +
-                '🔹 **10x+ Titanów**\n' +
-                '   💵 Cena: **1,00 zł/szt.**\n' +
-                '   💰 *Najtaniej!*\n\n' +
+                '📱 **CENA BLIK:**\n' +
+                '🔹 1x Titan | **1,35 zł**\n' +
+                '🔹 5x Titanów | **1,20 zł / sztuka**\n' +
+                '🔹 10x+ Titanów | **1,10 zł / sztuka**\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '💳 **CENA PSC:**\n' +
+                '✅ Stała cena: **1,70 zł / sztuka**\n' +
+                'dla dowolnej ilości Titanów\n\n' +
                 '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
                 '**💳 METODY PŁATNOŚCI:**\n' +
-                '📱 Blik | 💳 PaySafeCard | 🅿️ PayPal'
+                '📱 Blik | 💳 PaySafeCard'
             )
             .setFooter({ text: '🌴 TitanLAND | Najlepsze ceny!' });
         await message.channel.send({ embeds: [embed] });
@@ -168,7 +130,7 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
             .setTitle('💳 METODY PŁATNOŚCI')
             .setColor(0xFFD700)
-            .setDescription('📱 **BLIK**\n\n💳 **PSC**\n\n🅿️ **PayPal**');
+            .setDescription('📱 **BLIK**\n\n💳 **PSC**');
         await message.channel.send({ embeds: [embed] });
     }
 
@@ -321,363 +283,9 @@ client.on('messageCreate', async (message) => {
             endTime: endTime,
             duration: duration,
             participants: new Set(),
-            messageId: null,
+            mess$ageId: null,
             channelId: konkursChannel.id
         });
 
         const endDate = new Date(endTime);
-        const endTimeFormatted = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-        const endDateFormatted = endDate.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-        const contestEmbed = new EmbedBuilder()
-            .setTitle('🎉 KONKURS TITANLAND! 🎉')
-            .setColor(0xFF69B4)
-            .setDescription(
-                '**🏆 Wielki Konkurs TitanLAND!**\n\n' +
-                'Masz szansę wygrać darmowe Titany!\n\n' +
-                '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                `💎 **Nagroda:** ${titans}x Titanów\n` +
-                `👥 **Liczba wygranych:** ${winners} osób\n` +
-                `⏰ **Czas trwania:** ${formatDuration(duration)}\n` +
-                `🕐 **Koniec:** ${endDateFormatted} o godzinie **${endTimeFormatted}**\n\n` +
-                '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                '**Jak wziąć udział?**\n' +
-                'Kliknij przycisk poniżej, aby dołączyć do konkursu!\n' +
-                'Wygrani zostaną wylosowani automatycznie po zakończeniu czasu.'
-            )
-            .setFooter({ text: '🌴 TitanLAND | Powodzenia!' });
-
-        const joinRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`join_contest_${contestId}`)
-                    .setLabel('🎉 Dołącz do konkursu')
-                    .setStyle(ButtonStyle.Success)
-            );
-
-        const contestMsg = await konkursChannel.send({ 
-            content: '@everyone',
-            embeds: [contestEmbed], 
-            components: [joinRow] 
-        });
-        activeContests.get(contestId).messageId = contestMsg.id;
-
-        setTimeout(async () => { await endContest(contestId); }, duration);
-
-        await message.reply(`✅ **Konkurs utworzony!**\n\n💎 Nagroda: ${titans}x Titanów\n👥 Wygranych: ${winners} osób\n⏰ Czas: ${formatDuration(duration)}\n🕐 Koniec: ${endDateFormatted} o ${endTimeFormatted}\n\nKonkurs wysłany na kanał ${konkursChannel} z pingiem @everyone`);
-        console.log(`🎉 Utworzono konkurs: ${contestId} - ${titans} Titanów, ${winners} wygranych, czas: ${formatDuration(duration)}`);
-    }
-});
-
-async function endContest(contestId) {
-    const contest = activeContests.get(contestId);
-    if (!contest) return;
-    const channel = client.channels.cache.get(contest.channelId);
-    if (!channel) return;
-
-    const participants = Array.from(contest.participants);
-    let resultEmbed;
-
-    if (participants.length === 0) {
-        resultEmbed = new EmbedBuilder()
-            .setTitle('❌ Konkurs Zakończony')
-            .setColor(0xFF0000)
-            .setDescription(
-                '**Konkurs się zakończył, ale nikt nie wziął udziału!**\n\n' +
-                'Nikt nie kliknął przycisku "Dołącz do konkursu".'
-            )
-            .setFooter({ text: '🌴 TitanLAND | Następnym razem się uda!' });
-    } else {
-        const shuffled = participants.sort(() => 0.5 - Math.random());
-        const selectedWinners = shuffled.slice(0, Math.min(contest.winners, participants.length));
-        const winnersList = selectedWinners.map((winnerId, index) => {
-            const user = client.users.cache.get(winnerId);
-            return `**${index + 1}.** <@${winnerId}> (${user ? user.username : 'Nieznany użytkownik'})`;
-        }).join('\n');
-
-        resultEmbed = new EmbedBuilder()
-            .setTitle('🏆 KONKURS ZAKOŃCZONY - WYGRANI! 🏆')
-            .setColor(0xFFD700)
-            .setDescription(
-                `**🎉 Gratulacje dla zwycięzców!**\n\n` +
-                `Konkurs na **${contest.titans}x Titanów** został rozstrzygnięty!\n\n` +
-                '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                `👥 **Łączna liczba uczestników:** ${participants.length}\n` +
-                `🏆 **Liczba wygranych:** ${selectedWinners.length}\n\n` +
-                '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                `**🎊 WYGRANI:**\n${winnersList}\n\n` +
-                '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                '📩 **Zwycięzcy:** Skontaktujcie się z administracją w celu odbioru nagrody!\n' +
-                '⏰ Macie na to **24 godziny** od tej wiadomości.'
-            )
-            .setFooter({ text: '🌴 TitanLAND | Gratulacje!' });
-
-        for (const winnerId of selectedWinners) {
-            try {
-                const user = client.users.cache.get(winnerId);
-                if (user) {
-                    await user.send(`🏆 **Gratulacje! Wygrałeś konkurs TitanLAND!**\n\nWygrałeś **${contest.titans}x Titanów**!\n\nSkontaktuj się z administracją na serwerze, aby odebrać nagrodę. Masz na to 24 godziny.`);
-                }
-            } catch (error) {
-                console.error(`Nie udało się wysłać DM do ${winnerId}:`, error);
-            }
-        }
-    }
-
-    try {
-        const contestMsg = await channel.messages.fetch(contest.messageId);
-        await contestMsg.edit({ components: [] });
-    } catch (error) {
-        console.error('Nie udało się zaktualizować wiadomości konkursu:', error);
-    }
-
-    await channel.send({ embeds: [resultEmbed] });
-    activeContests.delete(contestId);
-    console.log(`🏆 Zakończono konkurs: ${contestId}`);
-}
-
-client.on('interactionCreate', async (interaction) => {
-
-    if (interaction.customId === 'verify') {
-        try {
-            let verifiedRole = interaction.guild.roles.cache.find(r => r.name.includes('Zweryfikowany') || r.name.includes('Członek'));
-            if (!verifiedRole && CONFIG.memberRoleID) verifiedRole = interaction.guild.roles.cache.get(CONFIG.memberRoleID);
-            if (!verifiedRole) return await interaction.reply({ content: '❌ Nie znaleziono roli do nadania! Skontaktuj się z administracją.', ephemeral: true });
-            if (interaction.member.roles.cache.has(verifiedRole.id)) return await interaction.reply({ content: '✅ Jesteś już zweryfikowany!', ephemeral: true });
-            await interaction.member.roles.add(verifiedRole);
-            await interaction.reply({ content: `✅ Zostałeś zweryfikowany! Witaj na serwerze ${interaction.guild.name}! 🌴`, ephemeral: true });
-            console.log(`✅ ${interaction.user.username} został zweryfikowany!`);
-        } catch (error) {
-            console.error('Błąd podczas weryfikacji:', error);
-            await interaction.reply({ content: '❌ Wystąpił błąd podczas weryfikacji! Spróbuj ponownie.', ephemeral: true });
-        }
-        return;
-    }
-
-    if (interaction.isButton() && interaction.customId === 'buy_titan') {
-        const embed = new EmbedBuilder().setDescription('💳 **Wybierz metodę płatności:**').setColor(0x00BFFF);
-        const selectRow = new ActionRowBuilder()
-            .addComponents(
-                new StringSelectMenuBuilder()
-                    .setCustomId('payment_method')
-                    .setPlaceholder('Wybierz metodę płatności...')
-                    .addOptions([
-                        { label: 'BLIK', value: 'blik', emoji: '📱', description: 'Płatność BLIKiem' },
-                        { label: 'PSC', value: 'psc', emoji: '💳', description: 'Paysafecard' },
-                        { label: 'PayPal', value: 'paypal', emoji: '🅿️', description: 'Płatność PayPal' }
-                    ])
-            );
-        try {
-            const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
-            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
-        } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
-        }
-        return;
-    }
-
-    if (interaction.isButton() && interaction.customId === 'create_legitcheck') {
-        const embed = new EmbedBuilder().setDescription('💳 **Wybierz metodę płatności:**').setColor(0x00FF00);
-        const selectRow = new ActionRowBuilder()
-            .addComponents(
-                new StringSelectMenuBuilder()
-                    .setCustomId('legitcheck_payment')
-                    .setPlaceholder('Wybierz metodę płatności...')
-                    .addOptions([
-                        { label: 'BLIK', value: 'blik', emoji: '📱', description: 'Płatność BLIKiem' },
-                        { label: 'PSC', value: 'psc', emoji: '💳', description: 'Paysafecard' },
-                        { label: 'PayPal', value: 'paypal', emoji: '🅿️', description: 'Płatność PayPal' }
-                    ])
-            );
-        try {
-            const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
-            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
-        } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
-        }
-        return;
-    }
-
-    if (interaction.isButton() && interaction.customId.startsWith('join_contest_')) {
-        const contestId = interaction.customId.replace('join_contest_', '');
-        const contest = activeContests.get(contestId);
-
-        if (!contest) {
-            return await interaction.reply({ content: '❌ Ten konkurs już się zakończył lub nie istnieje!', ephemeral: true });
-        }
-
-        if (Date.now() >= contest.endTime) {
-            return await interaction.reply({ content: '⏰ Czas konkursu się skończył!', ephemeral: true });
-        }
-
-        if (contest.participants.has(interaction.user.id)) {
-            return await interaction.reply({ content: '✅ Jesteś już uczestnikiem tego konkursu!', ephemeral: true });
-        }
-
-        contest.participants.add(interaction.user.id);
-
-        try {
-            const channel = client.channels.cache.get(contest.channelId);
-            const contestMsg = await channel.messages.fetch(contest.messageId);
-            
-            const endDate = new Date(contest.endTime);
-            const endTimeFormatted = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-            const endDateFormatted = endDate.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-            const updatedEmbed = new EmbedBuilder()
-                .setTitle('🎉 KONKURS TITANLAND! 🎉')
-                .setColor(0xFF69B4)
-                .setDescription(
-                    '**🏆 Wielki Konkurs TitanLAND!**\n\n' +
-                    'Masz szansę wygrać darmowe Titany!\n\n' +
-                    '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                    `💎 **Nagroda:** ${contest.titans}x Titanów\n` +
-                    `👥 **Liczba wygranych:** ${contest.winners} osób\n` +
-                    `⏰ **Czas trwania:** ${formatDuration(contest.duration)}\n` +
-                    `🕐 **Koniec:** ${endDateFormatted} o godzinie **${endTimeFormatted}**\n` +
-                    `👥 **Uczestnicy:** ${contest.participants.size} osób\n\n` +
-                    '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                    '**Jak wziąć udział?**\n' +
-                    'Kliknij przycisk poniżej, aby dołączyć do konkursu!\n' +
-                    'Wygrani zostaną wylosowani automatycznie po zakończeniu czasu.'
-                )
-                .setFooter({ text: '🌴 TitanLAND | Powodzenia!' });
-            await contestMsg.edit({ embeds: [updatedEmbed] });
-        } catch (error) {
-            console.error('Nie udało się zaktualizować embedu konkursu:', error);
-        }
-
-        const response = await interaction.reply({
-            content: `✅ **Dołączyłeś do konkursu!**\n\n💎 Nagroda: ${contest.titans}x Titanów\n👥 Łącznie uczestników: ${contest.participants.size}\n🕐 Losowanie: <t:${Math.floor(contest.endTime / 1000)}:R>`,
-            ephemeral: true
-        });
-
-        setTimeout(() => {
-            response.delete().catch(() => {});
-        }, 10000);
-
-        console.log(`🎉 ${interaction.user.username} dołączył do konkursu ${contestId}`);
-        return;
-    }
-
-    if (interaction.isStringSelectMenu() && interaction.customId === 'payment_method') {
-        const method = interaction.values[0];
-        const methodNames = { blik: 'BLIK', psc: 'PSC', paypal: 'PayPal' };
-        const modal = new ModalBuilder().setCustomId(`buy_modal_${method}`).setTitle(`🛒 Zakup Titanów — ${methodNames[method]}`);
-        const iloscInput = new TextInputBuilder().setCustomId('ilosc_titanow').setLabel('Ilość Titanów').setStyle(TextInputStyle.Short).setPlaceholder('Wpisz ile Titanów chcesz kupić...').setRequired(true).setMinLength(1).setMaxLength(10);
-        const nickInput = new TextInputBuilder().setCustomId('nick_roblox').setLabel('Twój nick Roblox').setStyle(TextInputStyle.Short).setPlaceholder('Wpisz swój nick z Roblox...').setRequired(true).setMinLength(2).setMaxLength(50);
-        const infoInput = new TextInputBuilder().setCustomId('dodatkowe_info').setLabel('Dodatkowe informacje (opcjonalne)').setStyle(TextInputStyle.Paragraph).setPlaceholder('Np. kod PSC, numer BLIK...').setRequired(false).setMinLength(0).setMaxLength(500);
-        modal.addComponents(new ActionRowBuilder().addComponents(iloscInput), new ActionRowBuilder().addComponents(nickInput), new ActionRowBuilder().addComponents(infoInput));
-        try {
-            await interaction.showModal(modal);
-        } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
-        }
-        return;
-    }
-
-    if (interaction.isStringSelectMenu() && interaction.customId === 'legitcheck_payment') {
-        const method = interaction.values[0];
-        const methodNames = { blik: 'BLIK', psc: 'PSC', paypal: 'PayPal' };
-        const modal = new ModalBuilder().setCustomId(`legitcheck_modal_${method}`).setTitle(`✅ LegitCheck — ${methodNames[method]}`);
-        const iloscInput = new TextInputBuilder().setCustomId('ilosc_titanow_legit').setLabel('Ilość zakupionych Titanów').setStyle(TextInputStyle.Short).setPlaceholder('Wpisz ile Titanów kupiłeś...').setRequired(true).setMinLength(1).setMaxLength(10);
-        modal.addComponents(new ActionRowBuilder().addComponents(iloscInput));
-        try {
-            await interaction.showModal(modal);
-        } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
-        }
-        return;
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId.startsWith('buy_modal_')) {
-        try {
-            const method = interaction.customId.replace('buy_modal_', '');
-            const methodNames = { blik: '📱 BLIK', psc: '💳 PSC', paypal: '🅿️ PayPal' };
-            const ilosc = interaction.fields.getTextInputValue('ilosc_titanow');
-            const nick = interaction.fields.getTextInputValue('nick_roblox');
-            const info = interaction.fields.getTextInputValue('dodatkowe_info');
-            const iloscNum = parseInt(ilosc);
-            let cenaJednostkowa = 1.30;
-            if (iloscNum >= 5 && iloscNum < 10) cenaJednostkowa = 1.15;
-            if (iloscNum >= 10) cenaJednostkowa = 1.00;
-            const cenaCalkowita = (iloscNum * cenaJednostkowa).toFixed(2);
-            const guild = interaction.guild;
-            let category = guild.channels.cache.find(ch => ch.name.includes('zakupy') && ch.type === ChannelType.GuildCategory);
-            if (!category) {
-                category = await guild.channels.create({ name: '🎫・zakupy', type: ChannelType.GuildCategory, permissionOverwrites: [{ id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }] });
-            }
-            const channelName = `zakup-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').substring(0, 50);
-            const ticketChannel = await guild.channels.create({
-                name: channelName, type: ChannelType.GuildText, parent: category.id,
-                permissionOverwrites: [
-                    { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                    { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                    { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
-                ]
-            });
-            const embed = new EmbedBuilder()
-                .setTitle('🛒 Nowe Zamówienie')
-                .setColor(0xFFD700)
-                .addFields(
-                    { name: '👤 Kupujący', value: `<@${interaction.user.id}> (${interaction.user.username})`, inline: true },
-                    { name: '🎮 Nick Roblox', value: `**${nick}**`, inline: true },
-                    { name: '📦 Ilość Titanów', value: `**${ilosc}x**`, inline: true },
-                    { name: '💳 Metoda Płatności', value: methodNames[method] || method, inline: true },
-                    { name: '💰 Cena jednostkowa', value: `**${cenaJednostkowa.toFixed(2)} zł**`, inline: true },
-                    { name: '💵 Do zapłaty', value: `**${cenaCalkowita} zł**`, inline: true },
-                    { name: '📝 Status', value: '⏳ Oczekuje na płatność', inline: false },
-                    { name: '🕐 Data złożenia', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
-                )
-                .setFooter({ text: '🌴 TitanLAND | Zakup' })
-                .setThumbnail(interaction.user.displayAvatarURL());
-            if (info) embed.addFields({ name: '📝 Dodatkowe info', value: info, inline: false });
-            const closeRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('🔒 Zamknij Ticket').setStyle(ButtonStyle.Danger));
-            await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeRow] });
-            const response = await interaction.reply({ content: `✅ Ticket zakupowy został utworzony!\nTicket: ${ticketChannel}`, ephemeral: true });
-            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
-            console.log(`✅ Zakup potwierdzony: ${interaction.user.username} kupił ${ilosc}x Titanów za ${cenaCalkowita} zł`);
-        } catch (error) {
-            console.error('Błąd przy tworzeniu zamówienia:', error);
-            await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia zamówienia!', ephemeral: true });
-        }
-        return;
-    }
-
-    if (interaction.isModalSubmit() && interaction.customId.startsWith('legitcheck_modal_')) {
-        try {
-            const method = interaction.customId.replace('legitcheck_modal_', '');
-            const methodNames = { blik: '📱 BLIK', psc: '💳 PSC', paypal: '🅿️ PayPal' };
-            const ilosc = interaction.fields.getTextInputValue('ilosc_titanow_legit');
-            const legitChannel = client.channels.cache.get(CONFIG.legitResultChannelID);
-            if (!legitChannel) return await interaction.reply({ content: '❌ Nie znaleziono kanału LegitCheck! Skontaktuj się z administracją.', ephemeral: true });
-            
-            const legitEmbed = new EmbedBuilder()
-                .setTitle('✅ TitanLAND LegitCheck')
-                .setColor(0x00FF00)
-                .setDescription(
-                    `💳 **Metoda:** ${methodNames[method] || method}\n\n` +
-                    `📦 **Ilość:** ${ilosc}x\n\n` +
-                    `👤 **Osoba:** <@${interaction.user.id}> (${interaction.user.username})`
-                )
-                .setFooter({ text: '🌴 TitanLAND | LegitCheck' })
-                .setThumbnail(interaction.user.displayAvatarURL());
-            
-            await legitChannel.send({ embeds: [legitEmbed] });
-            const response = await interaction.reply({ content: `✅ LegitCheck został utworzony! Sprawdź kanał ${legitChannel}`, ephemeral: true });
-            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
-        } catch (error) {
-            console.error('Błąd przy tworzeniu LegitCheck:', error);
-            await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia LegitCheck!', ephemeral: true });
-        }
-        return;
-    }
-
-    if (interaction.customId === 'close_ticket') {
-        await interaction.reply({ content: '🔒 Ticket zostanie zamknięty za 3 sekundy...', ephemeral: true });
-        setTimeout(async () => { try { await interaction.channel.delete(); } catch (e) { } }, 3000);
-        return;
-    }
-});
-
-client.login(TOKEN);
+        const endTimeFormatted = endDate.toLocale
