@@ -35,7 +35,8 @@ const CONFIG = {
     legitPanelChannelID: '1510734576459321496',
     legitResultChannelID: '1510698531068051610',
     adminChannelID: '1510794054814662727',
-    konkursChannelID: '1510697605938544752'
+    konkursChannelID: '1510697605938544752',
+    welcomeChannelID: '1510833999159890161'
 };
 
 const TOKEN = process.env.BOT_TOKEN;
@@ -82,6 +83,33 @@ function shuffleArray(array) {
     }
     return shuffled;
 }
+
+client.on('guildMemberAdd', async (member) => {
+    try {
+        const welcomeChannel = client.channels.cache.get(CONFIG.welcomeChannelID);
+        if (!welcomeChannel) {
+            console.error('❌ Nie znaleziono kanału powitalnego! Sprawdź CONFIG.welcomeChannelID.');
+            return;
+        }
+
+        const welcomeEmbed = new EmbedBuilder()
+            .setTitle('👋 Witaj na TitanLAND!')
+            .setColor(0x00FF00)
+            .setDescription(
+                `**Cześć ${member}!**\n\n` +
+                `Miło Cię widzieć na serwerze **${member.guild.name}**! 🌴\n\n` +
+                'Zapoznaj się z regulaminem oraz zweryfikuj się, aby uzyskać pełny dostęp!'
+            )
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .setFooter({ text: `Jesteś ${member.guild.memberCount} osobą na serwerze!` })
+            .setTimestamp();
+
+        await welcomeChannel.send({ embeds: [welcomeEmbed] });
+        console.log(`👋 Wysłano wiadomość powitalną dla ${member.user.username}`);
+    } catch (error) {
+        console.error('Błąd podczas wysyłania wiadomości powitalnej:', error);
+    }
+});
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
