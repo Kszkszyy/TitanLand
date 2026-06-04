@@ -6,7 +6,6 @@ const {
     ButtonBuilder,
     ButtonStyle,
     PermissionFlagsBits,
-    PermissionsBitField,
     ModalBuilder,
     TextInputBuilder,
     TextInputStyle,
@@ -74,6 +73,16 @@ function formatDuration(ms) {
     return `${minutes}m`;
 }
 
+// Funkcja do losowego tasowania (Fisher–Yates)
+function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
@@ -103,20 +112,24 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
             .setTitle('💰 TITANLAND - CENNIK')
             .setColor(0xFFD700)
-            .setDescription(
-                '**📦 CENY TITANÓW:**\n\n' +
-                '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                '🔹 **1x Titan**\n' +
-                '   💵 Cena: **1,40 zł**\n\n' +
-                '🔹 **5x Titanów**\n' +
-                '   💵 Cena: **1,25 zł/szt.**\n' +
-                '   💰 Razem: **6,25 zł**\n\n' +
-                '🔹 **10x+ Titanów**\n' +
-                '   💵 Cena: **1,15 zł/szt.**\n' +
-                '   💰 *Najtaniej!*\n\n' +
-                '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                '**💳 METODY PŁATNOŚCI:**\n' +
-                '📱 Blik | 💳 PaySafeCard'
+            .setDescription('Poniżej znajdują się aktualne ceny Titanów w zależności od metody płatności:')
+            .addFields(
+                {
+                    name: '📱 CENNIK BLIK',
+                    value:
+                        '🔹 **1x Titan** - 1,40 zł\n' +
+                        '🔹 **5x Titanów** - 1,25 zł/szt. (6,25 zł)\n' +
+                        '🔹 **10x+ Titanów** - 1,15 zł/szt.',
+                    inline: true
+                },
+                {
+                    name: '💳 CENNIK PSC',
+                    value:
+                        '🔹 **1x Titan** - 1,70 zł\n' +
+                        '🔹 **5x Titanów** - 1,55 zł/szt. (7,75 zł)\n' +
+                        '🔹 **10x+ Titanów** - 1,45 zł/szt.',
+                    inline: true
+                }
             )
             .setFooter({ text: '🌴 TitanLAND | Najlepsze ceny!' });
         await message.channel.send({ embeds: [embed] });
@@ -287,9 +300,7 @@ client.on('messageCreate', async (message) => {
             channelId: konkursChannel.id
         });
 
-        const endDate = new Date(endTime);
-        const endTimeFormatted = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-        const endDateFormatted = endDate.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const endTimestamp = Math.floor(endTime / 1000);
 
         const contestEmbed = new EmbedBuilder()
             .setTitle('🎉 KONKURS TITANLAND! 🎉')
@@ -301,7 +312,7 @@ client.on('messageCreate', async (message) => {
                 `💎 **Nagroda:** ${titans}x Titanów\n` +
                 `👥 **Liczba wygranych:** ${winners} osób\n` +
                 `⏰ **Czas trwania:** ${formatDuration(duration)}\n` +
-                `🕐 **Koniec:** ${endDateFormatted} o godzinie **${endTimeFormatted}**\n\n` +
+                `🕐 **Koniec:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)\n\n` +
                 '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
                 '**Jak wziąć udział?**\n' +
                 'Kliknij przycisk poniżej, aby dołączyć do konkursu!\n' +
@@ -326,7 +337,7 @@ client.on('messageCreate', async (message) => {
 
         setTimeout(async () => { await endContest(contestId); }, duration);
 
-        await message.reply(`✅ **Konkurs utworzony!**\n\n💎 Nagroda: ${titans}x Titanów\n👥 Wygranych: ${winners} osób\n⏰ Czas: ${formatDuration(duration)}\n🕐 Koniec: ${endDateFormatted} o ${endTimeFormatted}\n\nKonkurs wysłany na kanał ${konkursChannel} z pingiem @everyone`);
+        await message.reply(`✅ **Konkurs utworzony!**\n\n💎 Nagroda: ${titans}x Titanów\n👥 Wygranych: ${winners} osób\n⏰ Czas: ${formatDuration(duration)}\n🕐 Koniec: <t:${endTimestamp}:F>\n\nKonkurs wysłany na kanał ${konkursChannel} z pingiem @everyone`);
         console.log(`🎉 Utworzono konkurs: ${contestId} - ${titans} Titanów, ${winners} wygranych, czas: ${formatDuration(duration)}`);
     }
 });
@@ -350,7 +361,7 @@ async function endContest(contestId) {
             )
             .setFooter({ text: '🌴 TitanLAND | Następnym razem się uda!' });
     } else {
-        const shuffled = participants.sort(() => 0.5 - Math.random());
+        const shuffled = shuffleArray(participants);
         const selectedWinners = shuffled.slice(0, Math.min(contest.winners, participants.length));
         const winnersList = selectedWinners.map((winnerId, index) => {
             const user = client.users.cache.get(winnerId);
@@ -480,9 +491,7 @@ client.on('interactionCreate', async (interaction) => {
             const channel = client.channels.cache.get(contest.channelId);
             const contestMsg = await channel.messages.fetch(contest.messageId);
             
-            const endDate = new Date(contest.endTime);
-            const endTimeFormatted = endDate.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-            const endDateFormatted = endDate.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            const endTimestamp = Math.floor(contest.endTime / 1000);
 
             const updatedEmbed = new EmbedBuilder()
                 .setTitle('🎉 KONKURS TITANLAND! 🎉')
@@ -494,7 +503,7 @@ client.on('interactionCreate', async (interaction) => {
                     `💎 **Nagroda:** ${contest.titans}x Titanów\n` +
                     `👥 **Liczba wygranych:** ${contest.winners} osób\n` +
                     `⏰ **Czas trwania:** ${formatDuration(contest.duration)}\n` +
-                    `🕐 **Koniec:** ${endDateFormatted} o godzinie **${endTimeFormatted}**\n` +
+                    `🕐 **Koniec:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)\n` +
                     `👥 **Uczestnicy:** ${contest.participants.size} osób\n\n` +
                     '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
                     '**Jak wziąć udział?**\n' +
@@ -554,13 +563,24 @@ client.on('interactionCreate', async (interaction) => {
         try {
             const method = interaction.customId.replace('buy_modal_', '');
             const methodNames = { blik: '📱 BLIK', psc: '💳 PSC' };
+
             const ilosc = interaction.fields.getTextInputValue('ilosc_titanow');
             const nick = interaction.fields.getTextInputValue('nick_roblox');
             const info = interaction.fields.getTextInputValue('dodatkowe_info');
             const iloscNum = parseInt(ilosc);
+
+            // Ceny w zależności od metody płatności
             let cenaJednostkowa = 1.40;
-            if (iloscNum >= 5 && iloscNum < 10) cenaJednostkowa = 1.25;
-            if (iloscNum >= 10) cenaJednostkowa = 1.15;
+            if (method === 'psc') {
+                if (iloscNum >= 10) cenaJednostkowa = 1.45;
+                else if (iloscNum >= 5) cenaJednostkowa = 1.55;
+                else cenaJednostkowa = 1.70;
+            } else if (method === 'blik') {
+                if (iloscNum >= 10) cenaJednostkowa = 1.15;
+                else if (iloscNum >= 5) cenaJednostkowa = 1.25;
+                else cenaJednostkowa = 1.40;
+            }
+
             const cenaCalkowita = (iloscNum * cenaJednostkowa).toFixed(2);
             const guild = interaction.guild;
             let category = guild.channels.cache.find(ch => ch.name.includes('zakupy') && ch.type === ChannelType.GuildCategory);
@@ -596,7 +616,7 @@ client.on('interactionCreate', async (interaction) => {
             await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeRow] });
             const response = await interaction.reply({ content: `✅ Ticket zakupowy został utworzony!\nTicket: ${ticketChannel}`, ephemeral: true });
             setTimeout(() => { response.delete().catch(() => {}); }, 10000);
-            console.log(`✅ Zakup potwierdzony: ${interaction.user.username} kupił ${ilosc}x Titanów za ${cenaCalkowita} zł`);
+            console.log(`✅ Zakup potwierdzony: ${interaction.user.username} kupił ${ilosc}x Titanów za ${cenaCalkowita} zł (${method})`);
         } catch (error) {
             console.error('Błąd przy tworzeniu zamówienia:', error);
             await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia zamówienia!', ephemeral: true });
