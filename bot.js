@@ -18,7 +18,7 @@ const express = require('express');
 const app = express();
 
 app.get('/', (req, res) => {
-  res.send('Bot TitanLAND jest online! 🌴');
+  res.send('Bot TitanHUB jest online! 🌴');
 });
 
 const PORT = process.env.PORT || 3000;
@@ -54,7 +54,7 @@ const client = new Client({
 });
 
 client.once('ready', async () => {
-    console.log(`✅ Bot TitanLAND jest online!`);
+    console.log(`✅ Bot TitanHUB jest online!`);
     console.log(`👤 Zalogowano jako: ${client.user.tag}`);
     
     try {
@@ -74,7 +74,6 @@ client.once('ready', async () => {
             msg.embeds[0].title.includes('LegitCheck')
         ).size;
         
-        // Wyciągnij wszystko przed podkreśleniem (zachowaj emotkę/czcionkę)
         const parts = legitChannel.name.split('_');
         const prefix = parts[0];
         const newName = `${prefix}_${count}`;
@@ -121,7 +120,7 @@ client.on('guildMemberAdd', async (member) => {
         }
 
         const welcomeEmbed = new EmbedBuilder()
-            .setTitle('👋 Witaj na TitanLAND!')
+            .setTitle('👋 Witaj na TitanHUB!')
             .setColor(0x00FF00)
             .setDescription(
                 `**Cześć ${member}!**\n\n` +
@@ -152,12 +151,98 @@ client.on('messageCreate', async (message) => {
             const warningEmbed = new EmbedBuilder()
                 .setColor(0xFF4444)
                 .setDescription(`⛔ ${message.author}, **nie możesz wysyłać linków!**\nTylko Administracja ma do tego uprawnienia.`)
-                .setFooter({ text: '🌴 TitanLAND | Zakaz reklam' });
+                .setFooter({ text: '🌴 TitanHUB | Zakaz reklam' });
             const warningMsg = await message.channel.send({ embeds: [warningEmbed] });
             setTimeout(() => warningMsg.delete().catch(() => {}), 5000);
             return;
         }
     }
+
+    // ========== KOMENDA UPDATE-EMBEDS ==========
+    if (message.content === '!update-embeds') {
+        if (!isAdmin) return message.reply('❌ Brak uprawnień!');
+        
+        await message.reply('🔄 Rozpoczynam aktualizację wszystkich embedów...');
+        
+        const colors = {
+            konkurs: 0xFF0000,
+            metody: 0x00FF00,
+            zakup: 0x9400D3,
+            cennik: 0x00BFFF,
+            legitcheck: 0x00FF00,
+            regulamin: 0xFF4444,
+            weryfikacja: 0x00FF00,
+            welcome: 0x00FF00
+        };
+        
+        const channelsToCheck = [
+            CONFIG.legitResultChannelID,
+            CONFIG.konkursChannelID,
+            CONFIG.welcomeChannelID,
+            CONFIG.legitPanelChannelID
+        ];
+        
+        let updatedCount = 0;
+        
+        for (const channelID of channelsToCheck) {
+            const channel = client.channels.cache.get(channelID);
+            if (!channel) continue;
+            
+            try {
+                const messages = await channel.messages.fetch({ limit: 100 });
+                
+                for (const msg of messages.values()) {
+                    if (msg.embeds.length === 0) continue;
+                    
+                    const embed = msg.embeds[0];
+                    let newTitle = embed.title || '';
+                    let newDescription = embed.description || '';
+                    let newFooter = embed.footer ? embed.footer.text : '';
+                    
+                    newTitle = newTitle.replace(/TitanLand|TitanLAND/gi, 'TitanHUB');
+                    newDescription = newDescription.replace(/TitanLand|TitanLAND/gi, 'TitanHUB');
+                    newFooter = newFooter.replace(/TitanLand|TitanLAND/gi, 'TitanHUB');
+                    
+                    if (newTitle === embed.title && 
+                        newDescription === embed.description && 
+                        newFooter === (embed.footer ? embed.footer.text : '')) {
+                        continue;
+                    }
+                    
+                    let color = 0x00FF00;
+                    if (newTitle.includes('KONKURS')) color = colors.konkurs;
+                    else if (newTitle.includes('METODY')) color = colors.metody;
+                    else if (newTitle.includes('ZAKUP') || newTitle.includes('Zamówienie')) color = colors.zakup;
+                    else if (newTitle.includes('CENNIK')) color = colors.cennik;
+                    else if (newTitle.includes('LEGITCHECK')) color = colors.legitcheck;
+                    else if (newTitle.includes('REGULAMIN')) color = colors.regulamin;
+                    else if (newTitle.includes('WERYFIKACJA')) color = colors.weryfikacja;
+                    else if (newTitle.includes('Witaj')) color = colors.welcome;
+                    
+                    const newEmbed = new EmbedBuilder()
+                        .setTitle(newTitle)
+                        .setColor(color)
+                        .setDescription(newDescription);
+                    
+                    if (embed.fields && embed.fields.length > 0) {
+                        newEmbed.addFields(embed.fields.map(f => ({ name: f.name, value: f.value, inline: f.inline })));
+                    }
+                    
+                    if (newFooter) newEmbed.setFooter({ text: newFooter });
+                    if (embed.thumbnail) newEmbed.setThumbnail(embed.thumbnail.url);
+                    
+                    await msg.edit({ embeds: [newEmbed] });
+                    updatedCount++;
+                }
+            } catch (error) {
+                console.error(`Błąd podczas aktualizacji kanału ${channelID}:`, error);
+            }
+        }
+        
+        await message.channel.send(`✅ Zaktualizowano **${updatedCount}** embedów!\n\n📋 Zmiany:\n- TitanLand → TitanHUB\n- Nowe kolory według typu`);
+        return;
+    }
+    // ========== KONIEC KOMENDY ==========
 
     if (message.content === '!test') {
         await message.reply('✅ Test udany! Bot działa!');
@@ -166,8 +251,8 @@ client.on('messageCreate', async (message) => {
 
     if (message.content === '!cennik') {
         const embed = new EmbedBuilder()
-            .setTitle('💰 TITANLAND - CENNIK')
-            .setColor(0xFFD700)
+            .setTitle('💰 TITANHUB - CENNIK')
+            .setColor(0x00BFFF)
             .setDescription('Poniżej znajdują się aktualne ceny Titanów w zależności od metody płatności:')
             .addFields(
                 {
@@ -187,7 +272,7 @@ client.on('messageCreate', async (message) => {
                     inline: true
                 }
             )
-            .setFooter({ text: '🌴 TitanLAND | Najlepsze ceny!' });
+            .setFooter({ text: '🌴 TitanHUB | Najlepsze ceny!' });
         await message.channel.send({ embeds: [embed] });
         return;
     }
@@ -198,17 +283,18 @@ client.on('messageCreate', async (message) => {
         if (!isOwnerOrAdmin) return message.reply('❌ Brak uprawnień do użycia tej komendy!');
         const embed = new EmbedBuilder()
             .setTitle('💳 METODY PŁATNOŚCI')
-            .setColor(0xFFD700)
-            .setDescription('📱 **BLIK**\n\n💳 **PSC**');
+            .setColor(0x00FF00)
+            .setDescription('📱 **BLIK**\n\n💳 **PSC**')
+            .setFooter({ text: '🌴 TitanHUB | Płatności' });
         await message.channel.send({ embeds: [embed] });
     }
 
     if (message.content === '!regulamin') {
         const regulaminEmbed = new EmbedBuilder()
-            .setTitle('📜 REGULAMIN SERWERA TITANLAND')
+            .setTitle('📜 REGULAMIN SERWERA TITANHUB')
             .setColor(0xFF4444)
             .setDescription(
-                '**Witaj na serwerze TitanLAND! 🌴**\n' +
+                '**Witaj na serwerze TitanHUB! 🌴**\n' +
                 'Zapoznaj się z regulaminem przed korzystaniem z serwera.\n' +
                 'Nieznajomość regulaminu nie zwalnia z jego przestrzegania!'
             )
@@ -243,7 +329,7 @@ client.on('messageCreate', async (message) => {
                     inline: false
                 }
             )
-            .setFooter({ text: '🌴 TitanLAND | Korzystając z serwera akceptujesz regulamin' });
+            .setFooter({ text: '🌴 TitanHUB | Korzystając z serwera akceptujesz regulamin' });
         await message.channel.send({ embeds: [regulaminEmbed] });
     }
 
@@ -252,15 +338,15 @@ client.on('messageCreate', async (message) => {
             message.member.roles.cache.has(CONFIG.ownerRoleID);
         if (!isOwnerOrAdmin) return message.reply('❌ Brak uprawnień do użycia tej komendy!');
         const embed = new EmbedBuilder()
-            .setTitle('✅ WERYFIKACJA TITANLAND')
+            .setTitle('✅ WERYFIKACJA TITANHUB')
             .setColor(0x00FF00)
             .setDescription(
-                '**🌴 Witaj na serwerze TitanLAND!**\n\n' +
+                '**🌴 Witaj na serwerze TitanHUB!**\n\n' +
                 'Kliknij przycisk poniżej, aby się zweryfikować.\n' +
                 'Po weryfikacji otrzymasz dostęp do wszystkich kanałów!\n\n' +
                 '✅ *Zweryfikuj się teraz!*'
             )
-            .setFooter({ text: 'TitanLAND | Weryfikacja' });
+            .setFooter({ text: 'TitanHUB | Weryfikacja' });
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
@@ -276,15 +362,15 @@ client.on('messageCreate', async (message) => {
             message.member.roles.cache.has(CONFIG.ownerRoleID);
         if (!isOwnerOrAdmin) return message.reply('❌ Brak uprawnień do użycia tej komendy!');
         const embed = new EmbedBuilder()
-            .setTitle('🛒 TITANLAND - ZAKUP TITANÓW')
-            .setColor(0xFFD700)
+            .setTitle('🛒 TITANHUB - ZAKUP TITANÓW')
+            .setColor(0x9400D3)
             .setDescription(
                 '**💎 Chcesz kupić Titana?**\n\n' +
                 'Kliknij przycisk poniżej, aby rozpocząć zakup.\n' +
                 'Wybierz metodę płatności i ilość Titanów!\n\n' +
                 '🛒 *Rozpocznij zakup teraz!*'
             )
-            .setFooter({ text: '🌴 TitanLAND | Zakup' });
+            .setFooter({ text: '🌴 TitanHUB | Zakup' });
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
@@ -300,7 +386,7 @@ client.on('messageCreate', async (message) => {
             message.member.roles.cache.has(CONFIG.ownerRoleID);
         if (!isOwnerOrAdmin) return message.reply('❌ Brak uprawnień do użycia tej komendy!');
         const embed = new EmbedBuilder()
-            .setTitle('✅ TITANLAND - LEGITCHECK')
+            .setTitle('✅ TITANHUB - LEGITCHECK')
             .setColor(0x00FF00)
             .setDescription(
                 '**🔒 Potwierdź swój zakup!**\n\n' +
@@ -308,7 +394,7 @@ client.on('messageCreate', async (message) => {
                 'Podaj metodę płatności i ilość zakupionych Titanów.\n\n' +
                 '✅ *Utwórz LegitCheck teraz!*'
             )
-            .setFooter({ text: '🌴 TitanLAND | LegitCheck' });
+            .setFooter({ text: '🌴 TitanHUB | LegitCheck' });
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
@@ -359,10 +445,10 @@ client.on('messageCreate', async (message) => {
         const endTimestamp = Math.floor(endTime / 1000);
 
         const contestEmbed = new EmbedBuilder()
-            .setTitle('🎉 KONKURS TITANLAND! 🎉')
-            .setColor(0xFF69B4)
+            .setTitle('🎉 KONKURS TITANHUB! 🎉')
+            .setColor(0xFF0000)
             .setDescription(
-                '**🏆 Wielki Konkurs TitanLAND!**\n\n' +
+                '**🏆 Wielki Konkurs TitanHUB!**\n\n' +
                 'Masz szansę wygrać darmowe Titany!\n\n' +
                 '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
                 `💎 **Nagroda:** ${titans}x Titanów\n` +
@@ -374,7 +460,7 @@ client.on('messageCreate', async (message) => {
                 'Kliknij przycisk poniżej, aby dołączyć do konkursu!\n' +
                 'Wygrani zostaną wylosowani automatycznie po zakończeniu czasu.'
             )
-            .setFooter({ text: '🌴 TitanLAND | Powodzenia!' });
+            .setFooter({ text: '🌴 TitanHUB | Powodzenia!' });
 
         const joinRow = new ActionRowBuilder()
             .addComponents(
@@ -415,7 +501,7 @@ async function endContest(contestId) {
                 '**Konkurs się zakończył, ale nikt nie wziął udziału!**\n\n' +
                 'Nikt nie kliknął przycisku "Dołącz do konkursu".'
             )
-            .setFooter({ text: '🌴 TitanLAND | Następnym razem się uda!' });
+            .setFooter({ text: '🌴 TitanHUB | Następnym razem się uda!' });
     } else {
         const shuffled = shuffleArray(participants);
         const selectedWinners = shuffled.slice(0, Math.min(contest.winners, participants.length));
@@ -426,7 +512,7 @@ async function endContest(contestId) {
 
         resultEmbed = new EmbedBuilder()
             .setTitle('🏆 KONKURS ZAKOŃCZONY - WYGRANI! 🏆')
-            .setColor(0xFFD700)
+            .setColor(0xFF0000)
             .setDescription(
                 `**🎉 Gratulacje dla zwycięzców!**\n\n` +
                 `Konkurs na **${contest.titans}x Titanów** został rozstrzygnięty!\n\n` +
@@ -439,13 +525,13 @@ async function endContest(contestId) {
                 '📩 **Zwycięzcy:** Skontaktujcie się z administracją w celu odbioru nagrody!\n' +
                 '⏰ Macie na to **24 godziny** od tej wiadomości.'
             )
-            .setFooter({ text: '🌴 TitanLAND | Gratulacje!' });
+            .setFooter({ text: '🌴 TitanHUB | Gratulacje!' });
 
         for (const winnerId of selectedWinners) {
             try {
                 const user = client.users.cache.get(winnerId);
                 if (user) {
-                    await user.send(`🏆 **Gratulacje! Wygrałeś konkurs TitanLAND!**\n\nWygrałeś **${contest.titans}x Titanów**!\n\nSkontaktuj się z administracją na serwerze, aby odebrać nagrodę. Masz na to 24 godziny.`);
+                    await user.send(`🏆 **Gratulacje! Wygrałeś konkurs TitanHUB!**\n\nWygrałeś **${contest.titans}x Titanów**!\n\nSkontaktuj się z administracją na serwerze, aby odebrać nagrodę. Masz na to 24 godziny.`);
                 }
             } catch (error) {
                 console.error(`Nie udało się wysłać DM do ${winnerId}:`, error);
@@ -484,7 +570,7 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.isButton() && interaction.customId === 'buy_titan') {
-        const embed = new EmbedBuilder().setDescription('💳 **Wybierz metodę płatności:**').setColor(0x00BFFF);
+        const embed = new EmbedBuilder().setDescription('💳 **Wybierz metodę płatności:**').setColor(0x9400D3);
         const selectRow = new ActionRowBuilder()
             .addComponents(
                 new StringSelectMenuBuilder()
@@ -550,10 +636,10 @@ client.on('interactionCreate', async (interaction) => {
             const endTimestamp = Math.floor(contest.endTime / 1000);
 
             const updatedEmbed = new EmbedBuilder()
-                .setTitle('🎉 KONKURS TITANLAND! 🎉')
-                .setColor(0xFF69B4)
+                .setTitle('🎉 KONKURS TITANHUB! 🎉')
+                .setColor(0xFF0000)
                 .setDescription(
-                    '**🏆 Wielki Konkurs TitanLAND!**\n\n' +
+                    '**🏆 Wielki Konkurs TitanHUB!**\n\n' +
                     'Masz szansę wygrać darmowe Titany!\n\n' +
                     '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
                     `💎 **Nagroda:** ${contest.titans}x Titanów\n` +
@@ -566,7 +652,7 @@ client.on('interactionCreate', async (interaction) => {
                     'Kliknij przycisk poniżej, aby dołączyć do konkursu!\n' +
                     'Wygrani zostaną wylosowani automatycznie po zakończeniu czasu.'
                 )
-                .setFooter({ text: '🌴 TitanLAND | Powodzenia!' });
+                .setFooter({ text: '🌴 TitanHUB | Powodzenia!' });
             await contestMsg.edit({ embeds: [updatedEmbed] });
         } catch (error) {
             console.error('Nie udało się zaktualizować embedu konkursu:', error);
@@ -653,7 +739,7 @@ client.on('interactionCreate', async (interaction) => {
             });
             const embed = new EmbedBuilder()
                 .setTitle('🛒 Nowe Zamówienie')
-                .setColor(0xFFD700)
+                .setColor(0x9400D3)
                 .addFields(
                     { name: '👤 Kupujący', value: `<@${interaction.user.id}> (${interaction.user.username})`, inline: true },
                     { name: '🎮 Nick Roblox', value: `**${nick}**`, inline: true },
@@ -664,7 +750,7 @@ client.on('interactionCreate', async (interaction) => {
                     { name: '📝 Status', value: '⏳ Oczekuje na płatność', inline: false },
                     { name: '🕐 Data złożenia', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
                 )
-                .setFooter({ text: '🌴 TitanLAND | Zakup' })
+                .setFooter({ text: '🌴 TitanHUB | Zakup' })
                 .setThumbnail(interaction.user.displayAvatarURL());
             if (info) embed.addFields({ name: '📝 Dodatkowe info', value: info, inline: false });
             const closeRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('🔒 Zamknij Ticket').setStyle(ButtonStyle.Danger));
@@ -697,7 +783,6 @@ client.on('interactionCreate', async (interaction) => {
                 msg.embeds[0].title.includes('LegitCheck')
             ).size;
 
-            // Wyciągnij wszystko przed podkreśleniem (zachowaj emotkę/czcionkę)
             const parts = legitChannel.name.split('_');
             const prefix = parts[0];
             const newName = `${prefix}_${legitCheckCount + 1}`;
@@ -705,14 +790,14 @@ client.on('interactionCreate', async (interaction) => {
             await legitChannel.setName(newName);
 
             const legitEmbed = new EmbedBuilder()
-                .setTitle('✅ TitanLAND LegitCheck')
+                .setTitle('✅ TitanHUB LegitCheck')
                 .setColor(0x00FF00)
                 .setDescription(
                     `💳 **Metoda:** ${methodNames[method] || method}\n\n` +
                     `📦 **Ilość:** ${ilosc}x\n\n` +
                     `👤 **Osoba:** <@${interaction.user.id}> (${interaction.user.username})`
                 )
-                .setFooter({ text: '🌴 TitanLAND | LegitCheck' })
+                .setFooter({ text: '🌴 TitanHUB | LegitCheck' })
                 .setThumbnail(interaction.user.displayAvatarURL());
 
             await legitChannel.send({ embeds: [legitEmbed] });
