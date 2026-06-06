@@ -155,20 +155,25 @@ client.on('messageCreate', async (message) => {
     }
 
     if (message.content === '!ticket-panel') {
-        if (!isAdmin) return message.reply('❌ Brak uprawnień!');
+        const isOwnerOrAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator) ||
+            message.member.roles.cache.has(CONFIG.ownerRoleID);
+        if (!isOwnerOrAdmin) return message.reply('❌ Brak uprawnień do użycia tej komendy!');
         const embed = new EmbedBuilder()
             .setTitle('🎫 TICKETY TITANHUB')
             .setColor(0x9400D3)
-            .setDescription('**Wybierz typ ticketu:**\n\n🛒 **Zakup** — Kupno Titanów\n❓ **Pomoc** — Zgłoszenia i pytania\n🏆 **Odbierz Konkurs** — Odbiór nagrody z konkursu')
+            .setDescription(
+                '**Wybierz typ ticketu:**\n\n' +
+                '🛒 **Zakup** — Kupno Titanów\n' +
+                '❓ **Pomoc** — Zgłoszenia i pytania\n' +
+                '🏆 **Odbierz Konkurs** — Odbiór nagrody z konkursu'
+            )
             .setFooter({ text: '🌴 TitanHUB | Ticket' });
-
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder().setCustomId('buy_titan').setLabel('🛒 Zakup').setStyle(ButtonStyle.Primary),
                 new ButtonBuilder().setCustomId('pomoc_ticket').setLabel('❓ Pomoc').setStyle(ButtonStyle.Danger),
                 new ButtonBuilder().setCustomId('odbierz_konkurs').setLabel('🏆 Odbierz Konkurs').setStyle(ButtonStyle.Success)
             );
-
         await message.channel.send({ embeds: [embed], components: [row] });
         return;
     }
@@ -340,7 +345,7 @@ client.on('messageCreate', async (message) => {
 
         const args = message.content.split(' ').slice(1);
         if (args.length < 3) {
-            return message.reply('❌ **Nieprawidłowe użycie!**\n\nUżyj: `!konkurs <czas> <ilość_titanów> <ilość_wygranych>`\n\nPrzykład: `!konkurs 1h 10 3`');
+            return message.reply('❌ **Nieprawidłowe użycie!**\n\nUżyj: `!konkurs <czas> <ilość_titanów> <ilość_wygranych>`\n\nPrzykład: `!konkurs 1h 10 3`\n- `1h` = 1 godzina (może być: 30m, 2h, 1d)\n- `10` = 10 Titanów do wygrania\n- `3` = 3 osoby mogą wygrać');
         }
 
         const timeStr = args[0];
@@ -510,8 +515,12 @@ client.on('interactionCreate', async (interaction) => {
                         { label: 'PSC', value: 'psc', emoji: '💳', description: 'Paysafecard' }
                     ])
             );
-        const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
-        deleteAfter(response);
+        try {
+            const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
+            deleteAfter(response);
+        } catch (error) {
+            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
+        }
         return;
     }
 
@@ -527,8 +536,12 @@ client.on('interactionCreate', async (interaction) => {
                         { label: 'PSC', value: 'psc', emoji: '💳', description: 'Paysafecard' }
                     ])
             );
-        const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
-        deleteAfter(response);
+        try {
+            const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
+            deleteAfter(response);
+        } catch (error) {
+            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
+        }
         return;
     }
 
@@ -545,8 +558,12 @@ client.on('interactionCreate', async (interaction) => {
                         { label: '❓ Potrzebuje pomocy', value: 'pomoc', description: 'Ogólna pomoc' }
                     ])
             );
-        const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
-        deleteAfter(response);
+        try {
+            const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
+            deleteAfter(response);
+        } catch (error) {
+            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
+        }
         return;
     }
 
@@ -610,7 +627,7 @@ client.on('interactionCreate', async (interaction) => {
         try {
             await interaction.showModal(modal);
         } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza.', ephemeral: true });
+            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
         }
         return;
     }
@@ -624,7 +641,7 @@ client.on('interactionCreate', async (interaction) => {
         try {
             await interaction.showModal(modal);
         } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza.', ephemeral: true });
+            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
         }
         return;
     }
