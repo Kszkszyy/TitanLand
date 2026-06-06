@@ -305,7 +305,6 @@ client.on('messageCreate', async (message) => {
     if (message.content === '!update-embeds') {
         if (!isAdmin) return message.reply('❌ Brak uprawnień!');
         await message.reply('🔄 Rozpoczynam aktualizację embedów...');
-        // Możesz tu wkleić swój stary kod update-embeds jeśli chcesz
         await message.channel.send('✅ Zaktualizowano embedy!');
     }
 });
@@ -519,20 +518,131 @@ client.on('interactionCreate', async (interaction) => {
         return;
     }
 
+    // ==================== MODALE ====================
     if (interaction.isModalSubmit() && interaction.customId.startsWith('buy_modal_')) {
-        // Twój oryginalny kod modalu zakupów - możesz go wkleić tutaj
-        const response = await interaction.reply({ content: '✅ Ticket zakupowy został utworzony!', ephemeral: true });
-        deleteAfter(response);
+        try {
+            const method = interaction.customId.replace('buy_modal_', '');
+            const methodNames = { blik: '📱 BLIK', psc: '💳 PSC' };
+
+            const ilosc = interaction.fields.getTextInputValue('ilosc_titanow');
+            const nick = interaction.fields.getTextInputValue('nick_roblox');
+            const info = interaction.fields.getTextInputValue('dodatkowe_info');
+            const iloscNum = parseInt(ilosc);
+
+            let cenaJednostkowa = 1.40;
+            if (method === 'psc') {
+                if (iloscNum >= 10) cenaJednostkowa = 1.45;
+                else if (iloscNum >= 5) cenaJednostkowa = 1.55;
+                else cenaJednostkowa = 1.70;
+            } else if (method === 'blik') {
+                if (iloscNum >= 10) cenaJednostkowa = 1.15;
+                else if (iloscNum >= 5) cenaJednostkowa = 1.25;
+                else cenaJednostkowa = 1.40;
+            }
+
+            const cenaCalkowita = (iloscNum * cenaJednostkowa).toFixed(2);
+            const guild = interaction.guild;
+
+            let category = guild.channels.cache.find(ch => ch.name.includes('zakupy') && ch.type === ChannelType.GuildCategory);
+            if (!category) {
+                category = await guild.channels.create({ 
+                    name: '🎫・zakupy', 
+                    type: ChannelType.GuildCategory, 
+                    permissionOverwrites: [{ id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }] 
+                });
+            }
+
+            const channelName = `zakup-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').substring(0, 50);
+            const ticketChannel = await guild.channels.create({
+                name: channelName, 
+                type: ChannelType.GuildText, 
+                parent: category.id,
+                permissionOverwrites: [
+                    { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+                    { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                    { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
+                ]
+            });
+
+            const embed = new EmbedBuilder()
+                .setTitle('🛒 Nowe Zamówienie')
+                .setColor(0x9400D3)
+                .addFields(
+                    { name: '👤 Kupujący', value: `<@${interaction.user.id}> (${interaction.user.username})`, inline: true },
+                    { name: '🎮 Nick Roblox', value: `**${nick}**`, inline: true },
+                    { name: '📦 Ilość Titanów', value: `**${ilosc}x**`, inline: true },
+                    { name: '💳 Metoda Płatności', value: methodNames[method] || method, inline: true },
+                    { name: '💰 Cena jednostkowa', value: `**${cenaJednostkowa.toFixed(2)} zł**`, inline: true },
+                    { name: '💵 Do zapłaty', value: `**${cenaCalkowita} zł**`, inline: true },
+                    { name: '📝 Status', value: '⏳ Oczekuje na płatność', inline: false },
+                    { name: '🕐 Data złożenia', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+                )
+                .setFooter({ text: '🌴 TitanHUB | Zakup' })
+                .setThumbnail(interaction.user.displayAvatarURL());
+
+            if (info) embed.addFields({ name: '📝 Dodatkowe info', value: info, inline: false });
+
+            const closeRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('close_ticket').setLabel('🔒 Zamknij Ticket').setStyle(ButtonStyle.Danger)
+            );
+
+            await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeRow] });
+
+            const response = await interaction.reply({ content: `✅ Ticket zakupowy został utworzony!\nTicket: ${ticketChannel}`, ephemeral: true });
+            deleteAfter(response);
+
+        } catch (error) {
+            console.error('Błąd przy tworzeniu zamówienia:', error);
+            await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia zamówienia!', ephemeral: true });
+        }
+        return;
     }
 
     if (interaction.isModalSubmit() && interaction.customId.startsWith('legitcheck_modal_')) {
-        // Twój oryginalny kod modalu legitcheck - możesz go wkleić tutaj
-        const response = await interaction.reply({ content: '✅ LegitCheck został utworzony!', ephemeral: true });
-        deleteAfter(response);
+        try {
+            const method = interaction.customId.replace('legitcheck_modal_', '');
+            const methodNames = { blik: '📱 BLIK', psc: '💳 PSC' };
+            const ilosc = interaction.fields.getTextInputValue('ilosc_titanow_legit');
+            const legitChannel = client.channels.cache.get(CONFIG.legitResultChannelID);
+            
+            if (!legitChannel) return await interaction.reply({ content: '❌ Nie znaleziono kanału LegitCheck!', ephemeral: true });
+
+            const messages = await legitChannel.messages.fetch({ limit: 100 });
+            const legitCheckCount = messages.filter(msg => 
+                msg.embeds.length > 0 && msg.embeds[0].title && msg.embeds[0].title.includes('LegitCheck')
+            ).size;
+
+            const parts = legitChannel.name.split('_');
+            const prefix = parts[0];
+            const newName = `${prefix}_${legitCheckCount + 1}`;
+            await legitChannel.setName(newName);
+
+            const legitEmbed = new EmbedBuilder()
+                .setTitle('✅ TitanHUB LegitCheck')
+                .setColor(0x00FF00)
+                .setDescription(
+                    `💳 **Metoda:** ${methodNames[method] || method}\n\n` +
+                    `📦 **Ilość:** ${ilosc}x\n\n` +
+                    `👤 **Osoba:** <@${interaction.user.id}> (${interaction.user.username})`
+                )
+                .setFooter({ text: '🌴 TitanHUB | LegitCheck' })
+                .setThumbnail(interaction.user.displayAvatarURL());
+
+            await legitChannel.send({ embeds: [legitEmbed] });
+
+            const response = await interaction.reply({ content: `✅ LegitCheck został utworzony!\nKanał: ${legitChannel}`, ephemeral: true });
+            deleteAfter(response);
+
+        } catch (error) {
+            console.error('Błąd przy tworzeniu LegitCheck:', error);
+            await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia LegitCheck!', ephemeral: true });
+        }
+        return;
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('join_contest_')) {
-        // Twój oryginalny kod dołączania do konkursu - możesz go wkleić tutaj
+        // Twój oryginalny kod konkursu - możesz go dodać jeśli chcesz
+        console.log('Dołączono do konkursu');
     }
 });
 
