@@ -74,8 +74,13 @@ client.once('ready', async () => {
             msg.embeds[0].title.includes('LegitCheck')
         ).size;
         
-        await legitChannel.setTopic(`📊 LegitChecków: ${count}`);
-        console.log(`🔄 Zmieniono topic na: LegitChecków: ${count}`);
+        // Wyciągnij wszystko przed podkreśleniem (zachowaj emotkę/czcionkę)
+        const parts = legitChannel.name.split('_');
+        const prefix = parts[0];
+        const newName = `${prefix}_${count}`;
+        
+        await legitChannel.setName(newName);
+        console.log(`🔄 Zmieniono nazwę kanału na: ${newName}`);
         
     } catch (error) {
         console.error('❌ Błąd:', error.message);
@@ -692,7 +697,12 @@ client.on('interactionCreate', async (interaction) => {
                 msg.embeds[0].title.includes('LegitCheck')
             ).size;
 
-            await legitChannel.setTopic(`📊 LegitChecków: ${legitCheckCount + 1}`);
+            // Wyciągnij wszystko przed podkreśleniem (zachowaj emotkę/czcionkę)
+            const parts = legitChannel.name.split('_');
+            const prefix = parts[0];
+            const newName = `${prefix}_${legitCheckCount + 1}`;
+            
+            await legitChannel.setName(newName);
 
             const legitEmbed = new EmbedBuilder()
                 .setTitle('✅ TitanLAND LegitCheck')
