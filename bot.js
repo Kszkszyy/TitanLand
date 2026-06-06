@@ -74,7 +74,6 @@ client.once('ready', async () => {
             const parts = legitChannel.name.split('_');
             const prefix = parts[0];
             await legitChannel.setName(`${prefix}_${count}`);
-            console.log(`📊 Kanał LegitCheck ustawiony na: ${prefix}_${count}`);
         }
     } catch (error) {
         console.error('❌ Błąd przy ustawianiu nazwy LegitCheck:', error.message);
@@ -115,11 +114,7 @@ client.on('guildMemberAdd', async (member) => {
         const welcomeEmbed = new EmbedBuilder()
             .setTitle('👋 Witaj na TitanHUB!')
             .setColor(0x00FF00)
-            .setDescription(
-                `**Cześć ${member}!**\n\n` +
-                `Miło Cię widzieć na serwerze **${member.guild.name}**! 🌴\n\n` +
-                'Zapoznaj się z regulaminem oraz zweryfikuj się, aby uzyskać pełny dostęp!'
-            )
+            .setDescription(`**Cześć ${member}!**\n\nMiło Cię widzieć na serwerze **${member.guild.name}**! 🌴\n\nZapoznaj się z regulaminem oraz zweryfikuj się, aby uzyskać pełny dostęp!`)
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
             .setFooter({ text: `Jesteś ${member.guild.memberCount} osobą na serwerze!` })
             .setTimestamp();
@@ -304,14 +299,13 @@ client.on('messageCreate', async (message) => {
         activeContests.get(contestId).messageId = contestMsg.id;
 
         setTimeout(async () => { await endContest(contestId); }, duration);
-
         await message.reply(`✅ **Konkurs utworzony!**`);
     }
 
     if (message.content === '!update-embeds') {
         if (!isAdmin) return message.reply('❌ Brak uprawnień!');
         await message.reply('🔄 Rozpoczynam aktualizację embedów...');
-        // Kod update-embeds możesz dodać tutaj jeśli chcesz
+        // Możesz tu wkleić swój stary kod update-embeds jeśli chcesz
         await message.channel.send('✅ Zaktualizowano embedy!');
     }
 });
@@ -341,13 +335,6 @@ async function endContest(contestId) {
             .setColor(0xFF0000)
             .setDescription(`**🎉 Gratulacje dla zwycięzców!**\n\nKonkurs na **${contest.titans}x Titanów** został rozstrzygnięty!\n\n**WYGRANI:**\n${winnersList}`)
             .setFooter({ text: '🌴 TitanHUB | Gratulacje!' });
-
-        for (const winnerId of selectedWinners) {
-            try {
-                const user = client.users.cache.get(winnerId);
-                if (user) await user.send(`🏆 **Gratulacje! Wygrałeś konkurs TitanHUB!**\n\nWygrałeś **${contest.titans}x Titanów**!\nSkontaktuj się z administracją.`);
-            } catch (e) {}
-        }
     }
 
     await channel.send({ embeds: [resultEmbed] });
@@ -533,22 +520,19 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.isModalSubmit() && interaction.customId.startsWith('buy_modal_')) {
-        // Twój oryginalny kod modalu zakupów - możesz wkleić tutaj
-        console.log('Zakup modal obsłużony');
+        // Twój oryginalny kod modalu zakupów - możesz go wkleić tutaj
         const response = await interaction.reply({ content: '✅ Ticket zakupowy został utworzony!', ephemeral: true });
         deleteAfter(response);
     }
 
     if (interaction.isModalSubmit() && interaction.customId.startsWith('legitcheck_modal_')) {
-        // Twój oryginalny kod modalu legitcheck - możesz wkleić tutaj
-        console.log('LegitCheck modal obsłużony');
+        // Twój oryginalny kod modalu legitcheck - możesz go wkleić tutaj
         const response = await interaction.reply({ content: '✅ LegitCheck został utworzony!', ephemeral: true });
         deleteAfter(response);
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('join_contest_')) {
-        // Twój oryginalny kod dołączania do konkursu - możesz wkleić tutaj
-        console.log('Dołączono do konkursu');
+        // Twój oryginalny kod dołączania do konkursu - możesz go wkleić tutaj
     }
 });
 
