@@ -36,9 +36,7 @@ const CONFIG = {
     legitResultChannelID: '1510698531068051610',
     adminChannelID: '1510794054814662727',
     konkursChannelID: '1510697605938544752',
-    welcomeChannelID: '1510833999159890161',
-    pomocCategoryID: '',
-    konkursOdbiorCategoryID: ''
+    welcomeChannelID: '1510833999159890161'
 };
 
 const TOKEN = process.env.BOT_TOKEN;
@@ -55,29 +53,36 @@ const client = new Client({
     ]
 });
 
-// Funkcja usuwająca ephemeral wiadomości po 10 sekundach
-const deleteAfter = (response) => {
-    if (response) setTimeout(() => response.delete().catch(() => {}), 10000);
-};
-
 client.once('ready', async () => {
     console.log(`✅ Bot TitanHUB jest online!`);
     console.log(`👤 Zalogowano jako: ${client.user.tag}`);
     
     try {
         const legitChannel = client.channels.cache.get(CONFIG.legitResultChannelID);
-        if (legitChannel) {
-            const messages = await legitChannel.messages.fetch({ limit: 100 });
-            const count = messages.filter(msg => 
-                msg.embeds.length > 0 && msg.embeds[0].title?.includes('LegitCheck')
-            ).size;
-            const parts = legitChannel.name.split('_');
-            const prefix = parts[0];
-            await legitChannel.setName(`${prefix}_${count}`);
-            console.log(`📊 Kanał LegitCheck ustawiony na: ${prefix}_${count}`);
+        
+        if (!legitChannel) {
+            console.log('❌ Kanał LegitCheck nie znaleziony!');
+            return;
         }
+        
+        console.log(`📌 Kanał znaleziony: ${legitChannel.name}`);
+        
+        const messages = await legitChannel.messages.fetch({ limit: 100 });
+        const count = messages.filter(msg => 
+            msg.embeds.length > 0 && 
+            msg.embeds[0].title && 
+            msg.embeds[0].title.includes('LegitCheck')
+        ).size;
+        
+        const parts = legitChannel.name.split('_');
+        const prefix = parts[0];
+        const newName = `${prefix}_${count}`;
+        
+        await legitChannel.setName(newName);
+        console.log(`🔄 Zmieniono nazwę kanału na: ${newName}`);
+        
     } catch (error) {
-        console.error('❌ Błąd przy ustawianiu nazwy LegitCheck:', error.message);
+        console.error('❌ Błąd:', error.message);
     }
 });
 
@@ -106,12 +111,11 @@ function shuffleArray(array) {
     return shuffled;
 }
 
-// ==================== POWITANIE ====================
 client.on('guildMemberAdd', async (member) => {
     try {
         const welcomeChannel = client.channels.cache.get(CONFIG.welcomeChannelID);
         if (!welcomeChannel) {
-            console.error('❌ Nie znaleziono kanału powitalnego! Sprawdź CONFIG.welcomeChannelID.');
+            console.error('❌ Nie znaleziono kanału powitalnego!');
             return;
         }
 
@@ -154,29 +158,91 @@ client.on('messageCreate', async (message) => {
         }
     }
 
-    if (message.content === '!ticket-panel') {
-        const isOwnerOrAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator) ||
-            message.member.roles.cache.has(CONFIG.ownerRoleID);
-        if (!isOwnerOrAdmin) return message.reply('❌ Brak uprawnień do użycia tej komendy!');
-        const embed = new EmbedBuilder()
-            .setTitle('🎫 TICKETY TITANHUB')
-            .setColor(0x9400D3)
-            .setDescription(
-                '**Wybierz typ ticketu:**\n\n' +
-                '🛒 **Zakup** — Kupno Titanów\n' +
-                '❓ **Pomoc** — Zgłoszenia i pytania\n' +
-                '🏆 **Odbierz Konkurs** — Odbiór nagrody z konkursu'
-            )
-            .setFooter({ text: '🌴 TitanHUB | Ticket' });
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder().setCustomId('buy_titan').setLabel('🛒 Zakup').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId('pomoc_ticket').setLabel('❓ Pomoc').setStyle(ButtonStyle.Danger),
-                new ButtonBuilder().setCustomId('odbierz_konkurs').setLabel('🏆 Odbierz Konkurs').setStyle(ButtonStyle.Success)
-            );
-        await message.channel.send({ embeds: [embed], components: [row] });
+    // ========== KOMENDA UPDATE-EMBEDS ==========
+    if (message.content === '!update-embeds') {
+        if (!isAdmin) return message.reply('❌ Brak uprawnień!');
+        
+        await message.reply('🔄 Rozpoczynam aktualizację wszystkich embedów...');
+        
+        const colors = {
+            konkurs: 0xFF0000,
+            metody: 0x00FF00,
+            zakup: 0x9400D3,
+            cennik: 0x00BFFF,
+            legitcheck: 0x00FF00,
+            regulamin: 0xFF4444,
+            weryfikacja: 0x00FF00,
+            welcome: 0x00FF00
+        };
+        
+        const channelsToCheck = [
+            CONFIG.legitResultChannelID,
+            CONFIG.konkursChannelID,
+            CONFIG.welcomeChannelID,
+            CONFIG.legitPanelChannelID
+        ];
+        
+        let updatedCount = 0;
+        
+        for (const channelID of channelsToCheck) {
+            const channel = client.channels.cache.get(channelID);
+            if (!channel) continue;
+            
+            try {
+                const messages = await channel.messages.fetch({ limit: 100 });
+                
+                for (const msg of messages.values()) {
+                    if (msg.embeds.length === 0) continue;
+                    
+                    const embed = msg.embeds[0];
+                    let newTitle = embed.title || '';
+                    let newDescription = embed.description || '';
+                    let newFooter = embed.footer ? embed.footer.text : '';
+                    
+                    newTitle = newTitle.replace(/TitanLand|TitanLAND/gi, 'TitanHUB');
+                    newDescription = newDescription.replace(/TitanLand|TitanLAND/gi, 'TitanHUB');
+                    newFooter = newFooter.replace(/TitanLand|TitanLAND/gi, 'TitanHUB');
+                    
+                    if (newTitle === embed.title && 
+                        newDescription === embed.description && 
+                        newFooter === (embed.footer ? embed.footer.text : '')) {
+                        continue;
+                    }
+                    
+                    let color = 0x00FF00;
+                    if (newTitle.includes('KONKURS')) color = colors.konkurs;
+                    else if (newTitle.includes('METODY')) color = colors.metody;
+                    else if (newTitle.includes('ZAKUP') || newTitle.includes('Zamówienie')) color = colors.zakup;
+                    else if (newTitle.includes('CENNIK')) color = colors.cennik;
+                    else if (newTitle.includes('LEGITCHECK')) color = colors.legitcheck;
+                    else if (newTitle.includes('REGULAMIN')) color = colors.regulamin;
+                    else if (newTitle.includes('WERYFIKACJA')) color = colors.weryfikacja;
+                    else if (newTitle.includes('Witaj')) color = colors.welcome;
+                    
+                    const newEmbed = new EmbedBuilder()
+                        .setTitle(newTitle)
+                        .setColor(color)
+                        .setDescription(newDescription);
+                    
+                    if (embed.fields && embed.fields.length > 0) {
+                        newEmbed.addFields(embed.fields.map(f => ({ name: f.name, value: f.value, inline: f.inline })));
+                    }
+                    
+                    if (newFooter) newEmbed.setFooter({ text: newFooter });
+                    if (embed.thumbnail) newEmbed.setThumbnail(embed.thumbnail.url);
+                    
+                    await msg.edit({ embeds: [newEmbed] });
+                    updatedCount++;
+                }
+            } catch (error) {
+                console.error(`Błąd podczas aktualizacji kanału ${channelID}:`, error);
+            }
+        }
+        
+        await message.channel.send(`✅ Zaktualizowano **${updatedCount}** embedów!\n\n📋 Zmiany:\n- TitanLand → TitanHUB\n- Nowe kolory według typu`);
         return;
     }
+    // ========== KONIEC KOMENDY ==========
 
     if (message.content === '!test') {
         await message.reply('✅ Test udany! Bot działa!');
@@ -218,7 +284,8 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
             .setTitle('💳 METODY PŁATNOŚCI')
             .setColor(0x00FF00)
-            .setDescription('📱 **BLIK**\n\n💳 **PSC**');
+            .setDescription('📱 **BLIK**\n\n💳 **PSC**')
+            .setFooter({ text: '🌴 TitanHUB | Płatności' });
         await message.channel.send({ embeds: [embed] });
     }
 
@@ -482,7 +549,7 @@ async function endContest(contestId) {
     await channel.send({ embeds: [resultEmbed] });
     activeContests.delete(contestId);
     console.log(`🏆 Zakończono konkurs: ${contestId}`);
-});
+}
 
 client.on('interactionCreate', async (interaction) => {
 
@@ -493,8 +560,7 @@ client.on('interactionCreate', async (interaction) => {
             if (!verifiedRole) return await interaction.reply({ content: '❌ Nie znaleziono roli do nadania! Skontaktuj się z administracją.', ephemeral: true });
             if (interaction.member.roles.cache.has(verifiedRole.id)) return await interaction.reply({ content: '✅ Jesteś już zweryfikowany!', ephemeral: true });
             await interaction.member.roles.add(verifiedRole);
-            const response = await interaction.reply({ content: `✅ Zostałeś zweryfikowany! Witaj na serwerze ${interaction.guild.name}! 🌴`, ephemeral: true });
-            deleteAfter(response);
+            await interaction.reply({ content: `✅ Zostałeś zweryfikowany! Witaj na serwerze ${interaction.guild.name}! 🌴`, ephemeral: true });
             console.log(`✅ ${interaction.user.username} został zweryfikowany!`);
         } catch (error) {
             console.error('Błąd podczas weryfikacji:', error);
@@ -517,7 +583,7 @@ client.on('interactionCreate', async (interaction) => {
             );
         try {
             const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
-            deleteAfter(response);
+            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
         } catch (error) {
             await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
         }
@@ -538,81 +604,70 @@ client.on('interactionCreate', async (interaction) => {
             );
         try {
             const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
-            deleteAfter(response);
+            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
         } catch (error) {
             await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
         }
         return;
     }
 
-    if (interaction.isButton() && interaction.customId === 'pomoc_ticket') {
-        const embed = new EmbedBuilder().setDescription('**❓ Wybierz typ pomocy:**').setColor(0xFFA500);
-        const selectRow = new ActionRowBuilder()
-            .addComponents(
-                new StringSelectMenuBuilder()
-                    .setCustomId('pomoc_select')
-                    .setPlaceholder('Wybierz typ pomocy...')
-                    .addOptions([
-                        { label: '🚫 Zgłoś użytkownika', value: 'zgłoszenie', description: 'Zgłoś nieodpowiednie zachowanie' },
-                        { label: '🐛 Znalazłem błąd', value: 'błąd', description: 'Raportuj błąd' },
-                        { label: '❓ Potrzebuje pomocy', value: 'pomoc', description: 'Ogólna pomoc' }
-                    ])
-            );
-        try {
-            const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
-            deleteAfter(response);
-        } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
+    if (interaction.isButton() && interaction.customId.startsWith('join_contest_')) {
+        const contestId = interaction.customId.replace('join_contest_', '');
+        const contest = activeContests.get(contestId);
+
+        if (!contest) {
+            return await interaction.reply({ content: '❌ Ten konkurs już się zakończył lub nie istnieje!', ephemeral: true });
         }
-        return;
-    }
 
-    if (interaction.isButton() && interaction.customId === 'odbierz_konkurs') {
+        if (Date.now() >= contest.endTime) {
+            return await interaction.reply({ content: '⏰ Czas konkursu się skończył!', ephemeral: true });
+        }
+
+        if (contest.participants.has(interaction.user.id)) {
+            return await interaction.reply({ content: '✅ Jesteś już uczestnikiem tego konkursu!', ephemeral: true });
+        }
+
+        contest.participants.add(interaction.user.id);
+
         try {
-            let category = interaction.guild.channels.cache.find(ch => ch.name.includes('odbiór-konkurs') && ch.type === ChannelType.GuildCategory);
-            if (!category) {
-                category = await interaction.guild.channels.create({ 
-                    name: '🏆・odbiór-konkurs', 
-                    type: ChannelType.GuildCategory, 
-                    permissionOverwrites: [{ id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] }] 
-                });
-            }
-            const channelName = `odbiór-konkurs-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').substring(0, 50);
-            const ticketChannel = await interaction.guild.channels.create({
-                name: channelName, 
-                type: ChannelType.GuildText, 
-                parent: category.id,
-                permissionOverwrites: [
-                    { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-                    { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-                    { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
-                ]
-            });
+            const channel = client.channels.cache.get(contest.channelId);
+            const contestMsg = await channel.messages.fetch(contest.messageId);
+            
+            const endTimestamp = Math.floor(contest.endTime / 1000);
 
-            const embed = new EmbedBuilder()
-                .setTitle('🏆 Odbiór Nagrody z Konkursu')
+            const updatedEmbed = new EmbedBuilder()
+                .setTitle('🎉 KONKURS TITANHUB! 🎉')
                 .setColor(0xFF0000)
-                .addFields(
-                    { name: '👤 Użytkownik', value: `<@${interaction.user.id}>`, inline: true },
-                    { name: '📋 Typ', value: '**Odbiór Konkursu**', inline: true },
-                    { name: '🕐 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+                .setDescription(
+                    '**🏆 Wielki Konkurs TitanHUB!**\n\n' +
+                    'Masz szansę wygrać darmowe Titany!\n\n' +
+                    '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                    `💎 **Nagroda:** ${contest.titans}x Titanów\n` +
+                    `👥 **Liczba wygranych:** ${contest.winners} osób\n` +
+                    `⏰ **Czas trwania:** ${formatDuration(contest.duration)}\n` +
+                    `🕐 **Koniec:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)\n` +
+                    `👥 **Uczestnicy:** ${contest.participants.size} osób\n\n` +
+                    '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                    '**Jak wziąć udział?**\n' +
+                    'Kliknij przycisk poniżej, aby dołączyć do konkursu!\n' +
+                    'Wygrani zostaną wylosowani automatycznie po zakończeniu czasu.'
                 )
-                .setFooter({ text: '🌴 TitanHUB | Odbiór Konkursu' })
-                .setThumbnail(interaction.user.displayAvatarURL());
-
-            const closeRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('close_ticket').setLabel('🔒 Zamknij Ticket').setStyle(ButtonStyle.Danger)
-            );
-
-            await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeRow] });
-
-            const response = await interaction.reply({ content: `✅ Ticket do odbioru konkursu został utworzony!\nTicket: ${ticketChannel}`, ephemeral: true });
-            deleteAfter(response);
-            console.log(`🏆 Ticket konkursu: ${interaction.user.username}`);
+                .setFooter({ text: '🌴 TitanHUB | Powodzenia!' });
+            await contestMsg.edit({ embeds: [updatedEmbed] });
         } catch (error) {
-            console.error('Błąd przy tworzeniu ticketu konkursu:', error);
-            await interaction.reply({ content: '❌ Wystąpił błąd!', ephemeral: true });
+            console.error('Nie udało się zaktualizować embedu konkursu:', error);
         }
+
+        const response = await interaction.reply({
+            content: `✅ **Dołączyłeś do konkursu!**\n\n💎 Nagroda: ${contest.titans}x Titanów\n👥 Łącznie uczestników: ${contest.participants.size}\n🕐 Losowanie: <t:${Math.floor(contest.endTime / 1000)}:R>`,
+            ephemeral: true
+        });
+
+        setTimeout(() => {
+            response.delete().catch(() => {});
+        }, 10000);
+
+        console.log(`🎉 ${interaction.user.username} dołączył do konkursu ${contestId}`);
         return;
     }
 
@@ -701,7 +756,7 @@ client.on('interactionCreate', async (interaction) => {
             const closeRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('🔒 Zamknij Ticket').setStyle(ButtonStyle.Danger));
             await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeRow] });
             const response = await interaction.reply({ content: `✅ Ticket zakupowy został utworzony!\nTicket: ${ticketChannel}`, ephemeral: true });
-            deleteAfter(response);
+            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
             console.log(`✅ Zakup potwierdzony: ${interaction.user.username} kupił ${ilosc}x Titanów za ${cenaCalkowita} zł (${method})`);
         } catch (error) {
             console.error('Błąd przy tworzeniu zamówienia:', error);
@@ -716,8 +771,11 @@ client.on('interactionCreate', async (interaction) => {
             const methodNames = { blik: '📱 BLIK', psc: '💳 PSC' };
             const ilosc = interaction.fields.getTextInputValue('ilosc_titanow_legit');
             const legitChannel = client.channels.cache.get(CONFIG.legitResultChannelID);
-            if (!legitChannel) return await interaction.reply({ content: '❌ Nie znaleziono kanału LegitCheck! Skontaktuj się z administracją.', ephemeral: true });
             
+            if (!legitChannel) {
+                return await interaction.reply({ content: '❌ Nie znaleziono kanału LegitCheck!', ephemeral: true });
+            }
+
             const messages = await legitChannel.messages.fetch({ limit: 100 });
             const legitCheckCount = messages.filter(msg => 
                 msg.embeds.length > 0 && 
@@ -728,6 +786,7 @@ client.on('interactionCreate', async (interaction) => {
             const parts = legitChannel.name.split('_');
             const prefix = parts[0];
             const newName = `${prefix}_${legitCheckCount + 1}`;
+            
             await legitChannel.setName(newName);
 
             const legitEmbed = new EmbedBuilder()
@@ -740,11 +799,16 @@ client.on('interactionCreate', async (interaction) => {
                 )
                 .setFooter({ text: '🌴 TitanHUB | LegitCheck' })
                 .setThumbnail(interaction.user.displayAvatarURL());
-            
+
             await legitChannel.send({ embeds: [legitEmbed] });
-            const response = await interaction.reply({ content: `✅ LegitCheck został utworzony!\nKanał: ${legitChannel}`, ephemeral: true });
-            deleteAfter(response);
-            console.log(`✅ LegitCheck utworzony przez ${interaction.user.username}`);
+
+            const response = await interaction.reply({ 
+                content: `✅ LegitCheck został utworzony!\nKanał: ${legitChannel}`, 
+                ephemeral: true 
+            });
+
+            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
+
         } catch (error) {
             console.error('Błąd przy tworzeniu LegitCheck:', error);
             await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia LegitCheck!', ephemeral: true });
@@ -755,63 +819,6 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'close_ticket') {
         await interaction.reply({ content: '🔒 Ticket zostanie zamknięty za 3 sekundy...', ephemeral: true });
         setTimeout(async () => { try { await interaction.channel.delete(); } catch (e) { } }, 3000);
-        return;
-    }
-
-    if (interaction.isButton() && interaction.customId.startsWith('join_contest_')) {
-        const contestId = interaction.customId.replace('join_contest_', '');
-        const contest = activeContests.get(contestId);
-
-        if (!contest) {
-            return await interaction.reply({ content: '❌ Ten konkurs już się zakończył lub nie istnieje!', ephemeral: true });
-        }
-
-        if (Date.now() >= contest.endTime) {
-            return await interaction.reply({ content: '⏰ Czas konkursu się skończył!', ephemeral: true });
-        }
-
-        if (contest.participants.has(interaction.user.id)) {
-            return await interaction.reply({ content: '✅ Jesteś już uczestnikiem tego konkursu!', ephemeral: true });
-        }
-
-        contest.participants.add(interaction.user.id);
-
-        try {
-            const channel = client.channels.cache.get(contest.channelId);
-            const contestMsg = await channel.messages.fetch(contest.messageId);
-            
-            const endTimestamp = Math.floor(contest.endTime / 1000);
-
-            const updatedEmbed = new EmbedBuilder()
-                .setTitle('🎉 KONKURS TITANHUB! 🎉')
-                .setColor(0xFF0000)
-                .setDescription(
-                    '**🏆 Wielki Konkurs TitanHUB!**\n\n' +
-                    'Masz szansę wygrać darmowe Titany!\n\n' +
-                    '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                    `💎 **Nagroda:** ${contest.titans}x Titanów\n` +
-                    `👥 **Liczba wygranych:** ${contest.winners} osób\n` +
-                    `⏰ **Czas trwania:** ${formatDuration(contest.duration)}\n` +
-                    `🕐 **Koniec:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)\n` +
-                    `👥 **Uczestnicy:** ${contest.participants.size} osób\n\n` +
-                    '━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-                    '**Jak wziąć udział?**\n' +
-                    'Kliknij przycisk poniżej, aby dołączyć do konkursu!\n' +
-                    'Wygrani zostaną wylosowani automatycznie po zakończeniu czasu.'
-                )
-                .setFooter({ text: '🌴 TitanHUB | Powodzenia!' });
-            await contestMsg.edit({ embeds: [updatedEmbed] });
-        } catch (error) {
-            console.error('Nie udało się zaktualizować embedu konkursu:', error);
-        }
-
-        const response = await interaction.reply({
-            content: `✅ **Dołączyłeś do konkursu!**\n\n💎 Nagroda: ${contest.titans}x Titanów\n👥 Łącznie uczestników: ${contest.participants.size}\n🕐 Losowanie: <t:${Math.floor(contest.endTime / 1000)}:R>`,
-            ephemeral: true
-        });
-
-        deleteAfter(response);
-        console.log(`🎉 ${interaction.user.username} dołączył do konkursu ${contestId}`);
         return;
     }
 });
