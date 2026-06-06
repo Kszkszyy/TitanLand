@@ -53,9 +53,28 @@ const client = new Client({
     ]
 });
 
-client.once('ready', () => {
+client.once('ready', async () => {
     console.log(`✅ Bot TitanLAND jest online!`);
     console.log(`👤 Zalogowano jako: ${client.user.tag}`);
+    
+    // Automatyczne sprawdzenie i aktualizacja nazwy kanału LegitCheck
+    try {
+        const legitChannel = client.channels.cache.get(CONFIG.legitResultChannelID);
+        if (legitChannel) {
+            const messages = await legitChannel.messages.fetch({ limit: 1000 });
+            const legitCheckMessages = messages.filter(msg => 
+                msg.embeds.length > 0 && 
+                msg.embeds[0].title && 
+                msg.embeds[0].title.includes('LegitCheck')
+            );
+            const count = legitCheckMessages.size;
+            await legitChannel.setName(`legitcheck-${count}`);
+            console.log(`📊 Kanał LegitCheck zaktualizowany na: legitcheck-${count}`);
+            console.log(`📋 Znaleziono ${count} LegitChecków w historii`);
+        }
+    } catch (error) {
+        console.error('❌ Błąd podczas synchronizacji kanału LegitCheck:', error);
+    }
 });
 
 function parseDuration(timeStr) {
@@ -659,7 +678,18 @@ client.on('interactionCreate', async (interaction) => {
             const ilosc = interaction.fields.getTextInputValue('ilosc_titanow_legit');
             const legitChannel = client.channels.cache.get(CONFIG.legitResultChannelID);
             if (!legitChannel) return await interaction.reply({ content: '❌ Nie znaleziono kanału LegitCheck! Skontaktuj się z administracją.', ephemeral: true });
-            
+
+            // Pobierz aktualną liczbę wiadomości LegitCheck z kanału
+            const messages = await legitChannel.messages.fetch({ limit: 100 });
+            const legitCheckCount = messages.filter(msg => 
+                msg.embeds.length > 0 && 
+                msg.embeds[0].title && 
+                msg.embeds[0].title.includes('LegitCheck')
+            ).size;
+
+            // Zmień nazwę kanału na aktualną liczbę LegitChecków (dodaj 1 bo zaraz dodamy nową wiadomość)
+            await legitChannel.setName(`legitcheck-${legitCheckCount + 1}`);
+
             const legitEmbed = new EmbedBuilder()
                 .setTitle('✅ TitanLAND LegitCheck')
                 .setColor(0x00FF00)
@@ -670,10 +700,17 @@ client.on('interactionCreate', async (interaction) => {
                 )
                 .setFooter({ text: '🌴 TitanLAND | LegitCheck' })
                 .setThumbnail(interaction.user.displayAvatarURL());
-            
+
             await legitChannel.send({ embeds: [legitEmbed] });
-            const response = await interaction.reply({ content: `✅ LegitCheck został utworzony! Sprawdź kanał ${legitChannel}`, ephemeral: true });
+
+            const response = await interaction.reply({ 
+                content: `✅ LegitCheck został utworzony!\nKanał: ${legitChannel}`, 
+                ephemeral: true 
+            });
+
             setTimeout(() => { response.delete().catch(() => {}); }, 10000);
+
+            console.log(`✅ LegitCheck utworzony przez ${interaction.user.username}`);
         } catch (error) {
             console.error('Błąd przy tworzeniu LegitCheck:', error);
             await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia LegitCheck!', ephemeral: true });
