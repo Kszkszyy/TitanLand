@@ -36,7 +36,10 @@ const CONFIG = {
     legitResultChannelID: '1510698531068051610',
     adminChannelID: '1510794054814662727',
     konkursChannelID: '1510697605938544752',
-    welcomeChannelID: '1510833999159890161'
+    welcomeChannelID: '1510833999159890161',
+    // NOWE KATEGORIE
+    pomocCategoryID: '1510794054814662728',      // ZMIEŃ NA SWOJE ID KATEGORII DLA POMOCY
+    konkursOdbiorCategoryID: '1510794054814662729' // ZMIEŃ NA SWOJE ID KATEGORII DLA ODBIORU KONKURSU
 };
 
 const TOKEN = process.env.BOT_TOKEN;
@@ -357,6 +360,41 @@ client.on('messageCreate', async (message) => {
         await message.channel.send({ embeds: [embed], components: [row] });
     }
 
+    if (message.content === '!ticket-panel') {
+        const isOwnerOrAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator) ||
+            message.member.roles.cache.has(CONFIG.ownerRoleID);
+        if (!isOwnerOrAdmin) return message.reply('❌ Brak uprawnień do użycia tej komendy!');
+        
+        const embed = new EmbedBuilder()
+            .setTitle('🎫 TICKETY TITANHUB')
+            .setColor(0x9400D3)
+            .setDescription(
+                '**Wybierz typ ticketu:**\n\n' +
+                '🛒 **Zakup** - Kupno Titanów\n' +
+                '❓ **Pomoc** - Zgłoszenia i pytania\n' +
+                '🏆 **Odbierz Konkurs** - Odbiór nagrody z konkursu'
+            )
+            .setFooter({ text: '🌴 TitanHUB | Ticket' });
+        
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('buy_titan')
+                    .setLabel('🛒 Zakup')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('pomoc_ticket')
+                    .setLabel('❓ Pomoc')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('odbierz_konkurs')
+                    .setLabel('🏆 Odbierz Konkurs')
+                    .setStyle(ButtonStyle.Success)
+            );
+        
+        await message.channel.send({ embeds: [embed], components: [row] });
+    }
+
     if (message.content === '!zakup-panel') {
         const isOwnerOrAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator) ||
             message.member.roles.cache.has(CONFIG.ownerRoleID);
@@ -565,6 +603,172 @@ client.on('interactionCreate', async (interaction) => {
         } catch (error) {
             console.error('Błąd podczas weryfikacji:', error);
             await interaction.reply({ content: '❌ Wystąpił błąd podczas weryfikacji! Spróbuj ponownie.', ephemeral: true });
+        }
+        return;
+    }
+
+    // ========== PRZYCISK POMOC ==========
+    if (interaction.isButton() && interaction.customId === 'pomoc_ticket') {
+        const embed = new EmbedBuilder()
+            .setDescription('**❓ Wybierz typ pomocy:**')
+            .setColor(0xFFA500);
+        
+        const selectRow = new ActionRowBuilder()
+            .addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId('pomoc_select')
+                    .setPlaceholder('Wybierz typ pomocy...')
+                    .addOptions([
+                        { label: '🚫 Zgłoś użytkownika', value: 'zgłoszenie', description: 'Zgłoś nieodpowiednie zachowanie' },
+                        { label: '🐛 Znalazłem błąd', value: 'błąd', description: 'Raportuj błąd na serwerze' },
+                        { label: '❓ Potrzebuje pomocy', value: 'pomoc', description: 'Potrzebujesz pomocy z czymś' }
+                    ])
+            );
+        
+        try {
+            await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
+        } catch (error) {
+            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza.', ephemeral: true });
+        }
+        return;
+    }
+
+    // ========== PRZYCISK ODBIERZ KONKURS ==========
+    if (interaction.isButton() && interaction.customId === 'odbierz_konkurs') {
+        try {
+            const guild = interaction.guild;
+            
+            // Szukaj lub twórz kategorię dla Odbioru Konkursu
+            let category = guild.channels.cache.find(ch => ch.name.includes('odbiór-konkurs') && ch.type === ChannelType.GuildCategory);
+            if (!category && CONFIG.konkursOdbiorCategoryID) {
+                category = guild.channels.cache.get(CONFIG.konkursOdbiorCategoryID);
+            }
+            if (!category) {
+                category = await guild.channels.create({ 
+                    name: '🏆・odbiór-konkurs', 
+                    type: ChannelType.GuildCategory, 
+                    permissionOverwrites: [{ id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }] 
+                });
+            }
+            
+            const channelName = `odbiór-konkursu-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').substring(0, 50);
+            
+            const ticketChannel = await guild.channels.create({
+                name: channelName, 
+                type: ChannelType.GuildText, 
+                parent: category.id,
+                permissionOverwrites: [
+                    { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+                    { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                    { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
+                ]
+            });
+            
+            const embed = new EmbedBuilder()
+                .setTitle('🏆 Odbiór Konkursu')
+                .setColor(0xFF0000)
+                .addFields(
+                    { name: '👤 Użytkownik', value: `<@${interaction.user.id}>`, inline: true },
+                    { name: '📋 Typ', value: '**Odbiór Konkursu**', inline: true },
+                    { name: '🕐 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+                )
+                .setFooter({ text: '🌴 TitanHUB | Odbiór Konkursu' })
+                .setThumbnail(interaction.user.displayAvatarURL());
+            
+            const closeRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('close_ticket')
+                        .setLabel('🔒 Zamknij Ticket')
+                        .setStyle(ButtonStyle.Danger)
+                );
+            
+            await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeRow] });
+            
+            await interaction.reply({ 
+                content: `✅ Ticket do odbioru konkursu został utworzony!\nTicket: ${ticketChannel}`, 
+                ephemeral: true 
+            });
+            
+            console.log(`🏆 Ticket konkursu: ${interaction.user.username}`);
+            
+        } catch (error) {
+            console.error('Błąd przy tworzeniu ticketu konkursu:', error);
+            await interaction.reply({ content: '❌ Wystąpił błąd!', ephemeral: true });
+        }
+        return;
+    }
+
+    // ========== SELECT MENU POMOC ==========
+    if (interaction.isStringSelectMenu() && interaction.customId === 'pomoc_select') {
+        const typ = interaction.values[0];
+        const typNames = {
+            'zgłoszenie': '🚫 Zgłoś użytkownika',
+            'błąd': '🐛 Znalazłem błąd',
+            'pomoc': '❓ Potrzebuje pomocy'
+        };
+        
+        try {
+            const guild = interaction.guild;
+            
+            // Szukaj lub twórz kategorię dla Pomocy
+            let category = guild.channels.cache.find(ch => ch.name.includes('pomoc') && ch.type === ChannelType.GuildCategory);
+            if (!category && CONFIG.pomocCategoryID) {
+                category = guild.channels.cache.get(CONFIG.pomocCategoryID);
+            }
+            if (!category) {
+                category = await guild.channels.create({ 
+                    name: '❓・pomoc', 
+                    type: ChannelType.GuildCategory, 
+                    permissionOverwrites: [{ id: guild.id, deny: [PermissionFlagsBits.ViewChannel] }] 
+                });
+            }
+            
+            const prefix = typNames[typ] || 'pomoc';
+            const channelName = `${prefix}-${interaction.user.username}`.toLowerCase().replace(/[^a-z0-9-]/g, '').substring(0, 50);
+            
+            const ticketChannel = await guild.channels.create({
+                name: channelName, 
+                type: ChannelType.GuildText, 
+                parent: category.id,
+                permissionOverwrites: [
+                    { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+                    { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                    { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
+                ]
+            });
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`${typNames[typ] || 'Pomoc'}`)
+                .setColor(0xFFA500)
+                .addFields(
+                    { name: '👤 Użytkownik', value: `<@${interaction.user.id}>`, inline: true },
+                    { name: '📋 Typ', value: `**${typNames[typ] || 'Pomoc'}**`, inline: true },
+                    { name: '🕐 Data', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
+                )
+                .setFooter({ text: '🌴 TitanHUB | Pomoc' })
+                .setThumbnail(interaction.user.displayAvatarURL());
+            
+            const closeRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('close_ticket')
+                        .setLabel('🔒 Zamknij Ticket')
+                        .setStyle(ButtonStyle.Danger)
+                );
+            
+            await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeRow] });
+            
+            await interaction.reply({ 
+                content: `✅ Ticket pomocy został utworzony!\nTicket: ${ticketChannel}`, 
+                ephemeral: true 
+            });
+            
+            console.log(`❓ Ticket pomocy: ${typ} - ${interaction.user.username}`);
+            
+        } catch (error) {
+            console.error('Błąd przy tworzeniu ticketu pomocy:', error);
+            await interaction.reply({ content: '❌ Wystąpił błąd!', ephemeral: true });
         }
         return;
     }
