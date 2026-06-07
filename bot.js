@@ -53,6 +53,31 @@ const client = new Client({
     ]
 });
 
+async function countLegitChecks(channel) {
+    let lastId = null;
+    let total = 0;
+
+    while (true) {
+        const options = { limit: 100 };
+        if (lastId) options.before = lastId;
+
+        const messages = await channel.messages.fetch(options);
+        if (messages.size === 0) break;
+
+        total += messages.filter(msg =>
+            msg.embeds.length > 0 &&
+            msg.embeds[0].title &&
+            msg.embeds[0].title.includes('LegitCheck')
+        ).size;
+
+        lastId = messages.last().id;
+
+        if (messages.size < 100) break;
+    }
+
+    return total;
+}
+
 client.once('ready', async () => {
     console.log(`✅ Bot TitanZone jest online!`);
     console.log(`👤 Zalogowano jako: ${client.user.tag}`);
@@ -67,12 +92,7 @@ client.once('ready', async () => {
         
         console.log(`📌 Kanał znaleziony: ${legitChannel.name}`);
         
-        const messages = await legitChannel.messages.fetch({ limit: 100 });
-        const count = messages.filter(msg => 
-            msg.embeds.length > 0 && 
-            msg.embeds[0].title && 
-            msg.embeds[0].title.includes('LegitCheck')
-        ).size;
+        const count = await countLegitChecks(legitChannel);
         
         const parts = legitChannel.name.split('_');
         const prefix = parts[0];
@@ -781,19 +801,6 @@ client.on('interactionCreate', async (interaction) => {
                 return await interaction.reply({ content: '❌ Nie znaleziono kanału LegitCheck!', ephemeral: true });
             }
 
-            const messages = await legitChannel.messages.fetch({ limit: 100 });
-            const legitCheckCount = messages.filter(msg => 
-                msg.embeds.length > 0 && 
-                msg.embeds[0].title && 
-                msg.embeds[0].title.includes('LegitCheck')
-            ).size;
-
-            const parts = legitChannel.name.split('_');
-            const prefix = parts[0];
-            const newName = `${prefix}_${legitCheckCount + 1}`;
-            
-            await legitChannel.setName(newName);
-
             const legitEmbed = new EmbedBuilder()
                 .setTitle('✅ TitanZone LegitCheck')
                 .setColor(0x00FF00)
@@ -806,6 +813,14 @@ client.on('interactionCreate', async (interaction) => {
                 .setThumbnail(interaction.user.displayAvatarURL());
 
             await legitChannel.send({ embeds: [legitEmbed] });
+
+            const legitCheckCount = await countLegitChecks(legitChannel);
+
+            const parts = legitChannel.name.split('_');
+            const prefix = parts[0];
+            const newName = `${prefix}_${legitCheckCount}`;
+            
+            await legitChannel.setName(newName);
 
             const response = await interaction.reply({ 
                 content: `✅ LegitCheck został utworzony!\nKanał: ${legitChannel}`, 
