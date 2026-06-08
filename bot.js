@@ -41,6 +41,9 @@ const CONFIG = {
 
 const TOKEN = process.env.BOT_TOKEN;
 
+// ⏱️ Czas po którym znikają ephemerale (w ms)
+const EPHEMERAL_DELETE_TIME = 5000;
+
 const activeContests = new Map();
 
 const client = new Client({
@@ -52,6 +55,13 @@ const client = new Client({
         GatewayIntentBits.GuildPresences
     ]
 });
+
+// 🔥 Helper - usuwa ephemeral po określonym czasie
+function autoDelete(interaction, time = EPHEMERAL_DELETE_TIME) {
+    setTimeout(() => {
+        interaction.deleteReply().catch(() => {});
+    }, time);
+}
 
 async function countLegitChecks(channel) {
     let lastId = null;
@@ -98,7 +108,6 @@ client.once('ready', async () => {
         const prefix = parts[0];
         const newName = `${prefix}_${count}`;
         
-        // ✅ FIX: Zmieniaj nazwę tylko jeśli się różni (rate limit!)
         if (legitChannel.name !== newName) {
             await legitChannel.setName(newName);
             console.log(`🔄 Zmieniono nazwę kanału na: ${newName}`);
@@ -581,19 +590,30 @@ async function endContest(contestId) {
 
 client.on('interactionCreate', async (interaction) => {
 
-    // ✅ FIX: Dodano sprawdzenie isButton()
     if (interaction.isButton() && interaction.customId === 'verify') {
         try {
             let verifiedRole = interaction.guild.roles.cache.find(r => r.name.includes('Zweryfikowany') || r.name.includes('Członek'));
             if (!verifiedRole && CONFIG.memberRoleID) verifiedRole = interaction.guild.roles.cache.get(CONFIG.memberRoleID);
-            if (!verifiedRole) return await interaction.reply({ content: '❌ Nie znaleziono roli do nadania! Skontaktuj się z administracją.', ephemeral: true });
-            if (interaction.member.roles.cache.has(verifiedRole.id)) return await interaction.reply({ content: '✅ Jesteś już zweryfikowany!', ephemeral: true });
+            if (!verifiedRole) {
+                await interaction.reply({ content: '❌ Nie znaleziono roli do nadania! Skontaktuj się z administracją.', ephemeral: true });
+                autoDelete(interaction);
+                return;
+            }
+            if (interaction.member.roles.cache.has(verifiedRole.id)) {
+                await interaction.reply({ content: '✅ Jesteś już zweryfikowany!', ephemeral: true });
+                autoDelete(interaction);
+                return;
+            }
             await interaction.member.roles.add(verifiedRole);
             await interaction.reply({ content: `✅ Zostałeś zweryfikowany! Witaj na serwerze ${interaction.guild.name}! 🌴`, ephemeral: true });
+            autoDelete(interaction);
             console.log(`✅ ${interaction.user.username} został zweryfikowany!`);
         } catch (error) {
             console.error('Błąd podczas weryfikacji:', error);
-            await interaction.reply({ content: '❌ Wystąpił błąd podczas weryfikacji! Spróbuj ponownie.', ephemeral: true });
+            try {
+                await interaction.reply({ content: '❌ Wystąpił błąd podczas weryfikacji! Spróbuj ponownie.', ephemeral: true });
+                autoDelete(interaction);
+            } catch (e) {}
         }
         return;
     }
@@ -612,6 +632,7 @@ client.on('interactionCreate', async (interaction) => {
             );
         try {
             await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
+            autoDelete(interaction, 15000); // 15s żeby zdążyć wybrać
         } catch (error) {
             console.error('Błąd przy buy_titan:', error);
         }
@@ -632,6 +653,7 @@ client.on('interactionCreate', async (interaction) => {
             );
         try {
             await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
+            autoDelete(interaction, 15000); // 15s żeby zdążyć wybrać
         } catch (error) {
             console.error('Błąd przy create_legitcheck:', error);
         }
@@ -643,15 +665,21 @@ client.on('interactionCreate', async (interaction) => {
         const contest = activeContests.get(contestId);
 
         if (!contest) {
-            return await interaction.reply({ content: '❌ Ten konkurs już się zakończył lub nie istnieje!', ephemeral: true });
+            await interaction.reply({ content: '❌ Ten konkurs już się zakończył lub nie istnieje!', ephemeral: true });
+            autoDelete(interaction);
+            return;
         }
 
         if (Date.now() >= contest.endTime) {
-            return await interaction.reply({ content: '⏰ Czas konkursu się skończył!', ephemeral: true });
+            await interaction.reply({ content: '⏰ Czas konkursu się skończył!', ephemeral: true });
+            autoDelete(interaction);
+            return;
         }
 
         if (contest.participants.has(interaction.user.id)) {
-            return await interaction.reply({ content: '✅ Jesteś już uczestnikiem tego konkursu!', ephemeral: true });
+            await interaction.reply({ content: '✅ Jesteś już uczestnikiem tego konkursu!', ephemeral: true });
+            autoDelete(interaction);
+            return;
         }
 
         contest.participants.add(interaction.user.id);
@@ -689,6 +717,7 @@ client.on('interactionCreate', async (interaction) => {
             content: `✅ **Dołączyłeś do konkursu!**\n\n💎 Nagroda: ${contest.titans}x Titanów\n👥 Łącznie uczestników: ${contest.participants.size}\n🕐 Losowanie: <t:${Math.floor(contest.endTime / 1000)}:R>`,
             ephemeral: true
         });
+        autoDelete(interaction);
 
         console.log(`🎉 ${interaction.user.username} dołączył do konkursu ${contestId}`);
         return;
@@ -724,7 +753,6 @@ client.on('interactionCreate', async (interaction) => {
         return;
     }
 
-    // ✅ FIX: deferReply + walidacja + editReply
     if (interaction.isModalSubmit() && interaction.customId.startsWith('buy_modal_')) {
         try {
             await interaction.deferReply({ ephemeral: true });
@@ -738,7 +766,9 @@ client.on('interactionCreate', async (interaction) => {
             const iloscNum = parseInt(ilosc);
 
             if (isNaN(iloscNum) || iloscNum <= 0) {
-                return await interaction.editReply({ content: '❌ Podaj prawidłową ilość Titanów (liczba większa od 0)!' });
+                await interaction.editReply({ content: '❌ Podaj prawidłową ilość Titanów (liczba większa od 0)!' });
+                autoDelete(interaction);
+                return;
             }
 
             let cenaJednostkowa = 1.40;
@@ -787,6 +817,7 @@ client.on('interactionCreate', async (interaction) => {
             await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeRow] });
             
             await interaction.editReply({ content: `✅ Ticket zakupowy został utworzony!\nTicket: ${ticketChannel}` });
+            autoDelete(interaction);
             console.log(`✅ Zakup potwierdzony: ${interaction.user.username} kupił ${ilosc}x Titanów za ${cenaCalkowita} zł (${method})`);
         } catch (error) {
             console.error('Błąd przy tworzeniu zamówienia:', error);
@@ -796,12 +827,12 @@ client.on('interactionCreate', async (interaction) => {
                 } else {
                     await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia zamówienia!', ephemeral: true });
                 }
+                autoDelete(interaction);
             } catch (e) {}
         }
         return;
     }
 
-    // ✅ GŁÓWNY FIX: deferReply + setName w tle
     if (interaction.isModalSubmit() && interaction.customId.startsWith('legitcheck_modal_')) {
         try {
             await interaction.deferReply({ ephemeral: true });
@@ -812,7 +843,9 @@ client.on('interactionCreate', async (interaction) => {
             const legitChannel = client.channels.cache.get(CONFIG.legitResultChannelID);
             
             if (!legitChannel) {
-                return await interaction.editReply({ content: '❌ Nie znaleziono kanału LegitCheck!' });
+                await interaction.editReply({ content: '❌ Nie znaleziono kanału LegitCheck!' });
+                autoDelete(interaction);
+                return;
             }
 
             const legitEmbed = new EmbedBuilder()
@@ -828,12 +861,12 @@ client.on('interactionCreate', async (interaction) => {
 
             await legitChannel.send({ embeds: [legitEmbed] });
 
-            // Odpowiedz użytkownikowi OD RAZU
             await interaction.editReply({ 
                 content: `✅ LegitCheck został utworzony!\nKanał: ${legitChannel}`
             });
+            autoDelete(interaction);
 
-            // Zmiana nazwy kanału W TLE (nie blokuje odpowiedzi, omija rate limit)
+            // Zmiana nazwy kanału w tle
             countLegitChecks(legitChannel).then(async (count) => {
                 try {
                     const parts = legitChannel.name.split('_');
@@ -856,12 +889,12 @@ client.on('interactionCreate', async (interaction) => {
                 } else {
                     await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia LegitCheck!', ephemeral: true });
                 }
+                autoDelete(interaction);
             } catch (e) {}
         }
         return;
     }
 
-    // ✅ FIX: Dodano sprawdzenie isButton()
     if (interaction.isButton() && interaction.customId === 'close_ticket') {
         await interaction.reply({ content: '🔒 Ticket zostanie zamknięty za 3 sekundy...', ephemeral: true });
         setTimeout(async () => { try { await interaction.channel.delete(); } catch (e) { } }, 3000);
