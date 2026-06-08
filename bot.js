@@ -98,8 +98,13 @@ client.once('ready', async () => {
         const prefix = parts[0];
         const newName = `${prefix}_${count}`;
         
-        await legitChannel.setName(newName);
-        console.log(`🔄 Zmieniono nazwę kanału na: ${newName}`);
+        // ✅ FIX: Zmieniaj nazwę tylko jeśli się różni (rate limit!)
+        if (legitChannel.name !== newName) {
+            await legitChannel.setName(newName);
+            console.log(`🔄 Zmieniono nazwę kanału na: ${newName}`);
+        } else {
+            console.log(`ℹ️ Nazwa kanału już aktualna: ${newName}`);
+        }
         
     } catch (error) {
         console.error('❌ Błąd:', error.message);
@@ -159,7 +164,7 @@ client.on('guildMemberAdd', async (member) => {
 });
 
 client.on('messageCreate', async (message) => {
-    if (message.author.bot || !message.guild) return;
+    if (message.author.bot || !message.guild || !message.member) return;
 
     const isAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator) ||
                     message.member.roles.cache.has(CONFIG.ownerRoleID);
@@ -223,7 +228,6 @@ client.on('messageCreate', async (message) => {
                     newDescription = newDescription.replace(/TitanLand|TitanLAND|TitanHUB|TitanHub/gi, 'TitanZone');
                     newFooter = newFooter.replace(/TitanLand|TitanLAND|TitanHUB|TitanHub/gi, 'TitanZone');
                     
-                    // Zamień tytuły powitalne na MarketZone
                     if (newTitle.includes('Witaj')) {
                         newTitle = newTitle.replace(/TitanZone/gi, 'MarketZone');
                     }
@@ -267,7 +271,6 @@ client.on('messageCreate', async (message) => {
         await message.channel.send(`✅ Zaktualizowano **${updatedCount}** embedów!\n\n📋 Zmiany:\n- TitanHUB → TitanZone\n- Embedy powitalne → MarketZone\n- Nowe kolory według typu`);
         return;
     }
-    // ========== KONIEC KOMENDY ==========
 
     if (message.content === '!test') {
         await message.reply('✅ Test udany! Bot działa!');
@@ -578,7 +581,8 @@ async function endContest(contestId) {
 
 client.on('interactionCreate', async (interaction) => {
 
-    if (interaction.customId === 'verify') {
+    // ✅ FIX: Dodano sprawdzenie isButton()
+    if (interaction.isButton() && interaction.customId === 'verify') {
         try {
             let verifiedRole = interaction.guild.roles.cache.find(r => r.name.includes('Zweryfikowany') || r.name.includes('Członek'));
             if (!verifiedRole && CONFIG.memberRoleID) verifiedRole = interaction.guild.roles.cache.get(CONFIG.memberRoleID);
@@ -607,10 +611,9 @@ client.on('interactionCreate', async (interaction) => {
                     ])
             );
         try {
-            const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
-            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
+            await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
         } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
+            console.error('Błąd przy buy_titan:', error);
         }
         return;
     }
@@ -628,10 +631,9 @@ client.on('interactionCreate', async (interaction) => {
                     ])
             );
         try {
-            const response = await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
-            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
+            await interaction.reply({ embeds: [embed], components: [selectRow], ephemeral: true });
         } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
+            console.error('Błąd przy create_legitcheck:', error);
         }
         return;
     }
@@ -683,14 +685,10 @@ client.on('interactionCreate', async (interaction) => {
             console.error('Nie udało się zaktualizować embedu konkursu:', error);
         }
 
-        const response = await interaction.reply({
+        await interaction.reply({
             content: `✅ **Dołączyłeś do konkursu!**\n\n💎 Nagroda: ${contest.titans}x Titanów\n👥 Łącznie uczestników: ${contest.participants.size}\n🕐 Losowanie: <t:${Math.floor(contest.endTime / 1000)}:R>`,
             ephemeral: true
         });
-
-        setTimeout(() => {
-            response.delete().catch(() => {});
-        }, 10000);
 
         console.log(`🎉 ${interaction.user.username} dołączył do konkursu ${contestId}`);
         return;
@@ -707,7 +705,7 @@ client.on('interactionCreate', async (interaction) => {
         try {
             await interaction.showModal(modal);
         } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
+            console.error('Błąd showModal payment_method:', error);
         }
         return;
     }
@@ -721,13 +719,16 @@ client.on('interactionCreate', async (interaction) => {
         try {
             await interaction.showModal(modal);
         } catch (error) {
-            await interaction.reply({ content: '❌ Nie udało się otworzyć formularza. Upewnij się, że bot ma odpowiednie uprawnienia.', ephemeral: true });
+            console.error('Błąd showModal legitcheck_payment:', error);
         }
         return;
     }
 
+    // ✅ FIX: deferReply + walidacja + editReply
     if (interaction.isModalSubmit() && interaction.customId.startsWith('buy_modal_')) {
         try {
+            await interaction.deferReply({ ephemeral: true });
+            
             const method = interaction.customId.replace('buy_modal_', '');
             const methodNames = { blik: '📱 BLIK', psc: '💳 PSC' };
 
@@ -735,6 +736,10 @@ client.on('interactionCreate', async (interaction) => {
             const nick = interaction.fields.getTextInputValue('nick_roblox');
             const info = interaction.fields.getTextInputValue('dodatkowe_info');
             const iloscNum = parseInt(ilosc);
+
+            if (isNaN(iloscNum) || iloscNum <= 0) {
+                return await interaction.editReply({ content: '❌ Podaj prawidłową ilość Titanów (liczba większa od 0)!' });
+            }
 
             let cenaJednostkowa = 1.40;
             if (method === 'psc') {
@@ -780,25 +785,34 @@ client.on('interactionCreate', async (interaction) => {
             if (info) embed.addFields({ name: '📝 Dodatkowe info', value: info, inline: false });
             const closeRow = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('close_ticket').setLabel('🔒 Zamknij Ticket').setStyle(ButtonStyle.Danger));
             await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embed], components: [closeRow] });
-            const response = await interaction.reply({ content: `✅ Ticket zakupowy został utworzony!\nTicket: ${ticketChannel}`, ephemeral: true });
-            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
+            
+            await interaction.editReply({ content: `✅ Ticket zakupowy został utworzony!\nTicket: ${ticketChannel}` });
             console.log(`✅ Zakup potwierdzony: ${interaction.user.username} kupił ${ilosc}x Titanów za ${cenaCalkowita} zł (${method})`);
         } catch (error) {
             console.error('Błąd przy tworzeniu zamówienia:', error);
-            await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia zamówienia!', ephemeral: true });
+            try {
+                if (interaction.deferred || interaction.replied) {
+                    await interaction.editReply({ content: '❌ Wystąpił błąd podczas tworzenia zamówienia!' });
+                } else {
+                    await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia zamówienia!', ephemeral: true });
+                }
+            } catch (e) {}
         }
         return;
     }
 
+    // ✅ GŁÓWNY FIX: deferReply + setName w tle
     if (interaction.isModalSubmit() && interaction.customId.startsWith('legitcheck_modal_')) {
         try {
+            await interaction.deferReply({ ephemeral: true });
+            
             const method = interaction.customId.replace('legitcheck_modal_', '');
             const methodNames = { blik: '📱 BLIK', psc: '💳 PSC' };
             const ilosc = interaction.fields.getTextInputValue('ilosc_titanow_legit');
             const legitChannel = client.channels.cache.get(CONFIG.legitResultChannelID);
             
             if (!legitChannel) {
-                return await interaction.reply({ content: '❌ Nie znaleziono kanału LegitCheck!', ephemeral: true });
+                return await interaction.editReply({ content: '❌ Nie znaleziono kanału LegitCheck!' });
             }
 
             const legitEmbed = new EmbedBuilder()
@@ -814,29 +828,41 @@ client.on('interactionCreate', async (interaction) => {
 
             await legitChannel.send({ embeds: [legitEmbed] });
 
-            const legitCheckCount = await countLegitChecks(legitChannel);
-
-            const parts = legitChannel.name.split('_');
-            const prefix = parts[0];
-            const newName = `${prefix}_${legitCheckCount}`;
-            
-            await legitChannel.setName(newName);
-
-            const response = await interaction.reply({ 
-                content: `✅ LegitCheck został utworzony!\nKanał: ${legitChannel}`, 
-                ephemeral: true 
+            // Odpowiedz użytkownikowi OD RAZU
+            await interaction.editReply({ 
+                content: `✅ LegitCheck został utworzony!\nKanał: ${legitChannel}`
             });
 
-            setTimeout(() => { response.delete().catch(() => {}); }, 10000);
+            // Zmiana nazwy kanału W TLE (nie blokuje odpowiedzi, omija rate limit)
+            countLegitChecks(legitChannel).then(async (count) => {
+                try {
+                    const parts = legitChannel.name.split('_');
+                    const prefix = parts[0];
+                    const newName = `${prefix}_${count}`;
+                    if (legitChannel.name !== newName) {
+                        await legitChannel.setName(newName);
+                        console.log(`🔄 Zaktualizowano nazwę kanału LegitCheck na: ${newName}`);
+                    }
+                } catch (e) {
+                    console.error('Nie udało się zmienić nazwy kanału (możliwy rate limit):', e.message);
+                }
+            }).catch(e => console.error('Błąd liczenia legitów:', e));
 
         } catch (error) {
             console.error('Błąd przy tworzeniu LegitCheck:', error);
-            await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia LegitCheck!', ephemeral: true });
+            try {
+                if (interaction.deferred || interaction.replied) {
+                    await interaction.editReply({ content: '❌ Wystąpił błąd podczas tworzenia LegitCheck!' });
+                } else {
+                    await interaction.reply({ content: '❌ Wystąpił błąd podczas tworzenia LegitCheck!', ephemeral: true });
+                }
+            } catch (e) {}
         }
         return;
     }
 
-    if (interaction.customId === 'close_ticket') {
+    // ✅ FIX: Dodano sprawdzenie isButton()
+    if (interaction.isButton() && interaction.customId === 'close_ticket') {
         await interaction.reply({ content: '🔒 Ticket zostanie zamknięty za 3 sekundy...', ephemeral: true });
         setTimeout(async () => { try { await interaction.channel.delete(); } catch (e) { } }, 3000);
         return;
